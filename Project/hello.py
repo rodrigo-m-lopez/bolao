@@ -11,24 +11,24 @@ tbl_selecao = db.selecao
 app = Flask(__name__)
 grupos = {}
 
+
 @app.route('/')
 def inicio():
-    return 'Olá Mundo'
+    return ranking()
+
 
 @app.route('/aposta', methods=['GET', 'POST'])
 def aposta():
     grupos = monta_dto_grupos()
     if request.method == 'GET':
         return render_template('aposta.html', grupos=grupos)
-    else:
-        nome_existente = valida_usuario(request.form['inputNome'])
-        return render_template('aposta.html', grupos=grupos, nome_existente=nome_existente, form=request.form)
 
 
 @app.route('/ranking')
 def ranking():
     if request.method == 'GET':
         return render_template('ranking.html')
+
 
 @app.route('/admin', methods=['GET', 'POST'])
 def admin():
@@ -37,8 +37,17 @@ def admin():
     else:
         pass
 
-def valida_usuario(novo_usuario):
-    return novo_usuario
+
+@app.route('/valida_usuario', methods=['POST'])
+def valida_usuario():
+    novo_usuario = request.form['novo_usuario']
+
+    if novo_usuario == 'teste':
+        return '''<div class="alert alert-danger alert-dismissible fade show" style="width: 52rem;">
+	              Nome <Strong>{0}</Strong> já existe para este bolão, escolha outro</div>'''.format(novo_usuario)
+    else:
+        return ''
+
 
 def monta_dto_jogo(jogo):
     mandante = tbl_selecao.find_one({'_id': jogo["mandante"]})
@@ -52,6 +61,7 @@ def monta_dto_jogo(jogo):
             "id_input_visitante": 'v{0}'.format(str(jogo["_id"])),
             "data": jogo["data"].strftime('%d/%m %H:%M'),
             "local": jogo["local"]}
+
 
 def inclui_jogo_na_lista_rodadas(lista_rodadas, jogo):
     rodada_do_jogo = jogo["rodada"]
@@ -71,10 +81,11 @@ def inclui_jogo_na_lista_rodadas(lista_rodadas, jogo):
 
     jogos.append(monta_dto_jogo(jogo))
 
+
 def monta_dto_grupos():
     if not grupos:
-        for jogo in tbl_jogo.find({'grupo': 'Grupo A', 'rodada': 1}): #para testar com menos jogos
-        #for jogo in tbl_jogo.find():
+        for jogo in tbl_jogo.find({'grupo': 'Grupo A', 'rodada': 1}):  # para testar com menos jogos
+            # for jogo in tbl_jogo.find():
             nome_grupo = jogo["grupo"]
             if nome_grupo not in grupos.keys():
                 grupos[nome_grupo] = {"nome": nome_grupo,
@@ -83,6 +94,3 @@ def monta_dto_grupos():
             rodadas = grupos[nome_grupo]["rodadas"]
             inclui_jogo_na_lista_rodadas(rodadas, jogo)
     return grupos.values()
-
-
-
