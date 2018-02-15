@@ -8,11 +8,19 @@
 
 <div class="form-group" >
 	<input type="text" class="form-control" onblur="validaNome()" style="width: 52rem;" name="inputNome" id="inputNome" placeholder="Nome" required>
+	{% if nome_existente %}
+ 	<div class="alert alert-danger alert-dismissible fade show" style="width: 52rem;">
+ 	  Nome <Strong>{{ nome_existente }}</Strong> já existe para este bolão, escolha outro
+ 	  <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+ 		<span aria-hidden="true">&times;</span>
+ 	  </button>
+ 	</div>
+ 	{% endif %}
 	<div id="erro"/>
 	
 </div>
 <div class="form-group">
-	<input type="email" class="form-control" style="width: 52rem;" id="inputEmail" aria-describedby="emailHelp" placeholder="Email" required>
+	<input type="email" class="form-control" style="width: 52rem;" name="inputEmail" id="inputEmail" aria-describedby="emailHelp" placeholder="Email" required>
 </div>	
 {% for grupo in grupos -%}
 <div class="card" style="width: 52rem;">
@@ -27,11 +35,11 @@
 				<div class="col-3" style="text-align: right;">
 					{{ jogo.nome_mandante }}
 					<img itemprop="image" src="{{ jogo.escudo_mandante}}" width="30" height="30">
-					<input id="{{ jogo.id_input_mandante }}" type="text" class="form-control" name="entry.{{ jogo.id_input_mandante }}" style="width:42px;height:30px;display:inline" required>
+					<input id="{{ jogo.id_input_mandante }}" type="text" class="form-control" name="{{ jogo.id_input_mandante }}" style="width:42px;height:30px;display:inline" required>
 				</div>
 				<div class="col-1" style="text-align: center;">x</div>
 				<div class="col-3" style="text-align: left;">
-					<input id="{{ jogo.id_input_visitante }}" type="text" class="form-control" name="entry.{{ jogo.id_input_visitante }}" style="width:42px;height:30px;display:inline" required>
+					<input id="{{ jogo.id_input_visitante }}" type="text" class="form-control" name="{{ jogo.id_input_visitante }}" style="width:42px;height:30px;display:inline" required>
 					<img itemprop="image" src="{{ jogo.escudo_visitante}}" width="30" height="30">
 					{{ jogo.nome_visitante }}
 				</div>

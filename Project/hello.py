@@ -8,26 +8,35 @@ client = MongoClient()
 db = client.dev
 tbl_jogo = db.jogo
 tbl_selecao = db.selecao
+tbl_usuario = db.usuario
+tbl_palpite = db.palpite
 app = Flask(__name__)
 grupos = {}
+todos_jogos = []
 
 
 @app.route('/')
 def inicio():
     return ranking()
 
-
 @app.route('/aposta', methods=['GET', 'POST'])
 def aposta():
     grupos = monta_dto_grupos()
     if request.method == 'GET':
         return render_template('aposta.html', grupos=grupos)
-
+    else:
+        if not usuario_ja_existe(request.form['inputNome']):
+            id_usuario = tbl_usuario.insert_one({'nome': request.form['inputNome'],
+                                    'email': request.form['inputEmail'],
+                                    'pago': False}).inserted_id
+            insere_palpites(id_usuario, request.form)
+            return ranking()
+        else:
+            return render_template('aposta.html', grupos=grupos, nome_existente=request.form['inputNome'])
 
 @app.route('/ranking')
 def ranking():
-    if request.method == 'GET':
-        return render_template('ranking.html')
+    return render_template('ranking.html')
 
 
 @app.route('/admin', methods=['GET', 'POST'])
@@ -37,22 +46,35 @@ def admin():
     else:
         pass
 
-
 @app.route('/valida_usuario', methods=['POST'])
 def valida_usuario():
     novo_usuario = request.form['novo_usuario']
 
-    if novo_usuario == 'teste':
+    if usuario_ja_existe(novo_usuario):
         return '''<div class="alert alert-danger alert-dismissible fade show" style="width: 52rem;">
 	              Nome <Strong>{0}</Strong> já existe para este bolão, escolha outro</div>'''.format(novo_usuario)
     else:
         return ''
 
+def insere_palpites(usuario, form):
+    for jogo in todos_jogos:
+        id_jogo = jogo["_id"]
+        id_usuario = str(usuario)
+        id_mandante_form = 'm{0}'.format(id_jogo)
+        id_visitante_form = 'v{0}'.format(id_jogo)
+        tbl_palpite.insert_one({'usuario':id_usuario,
+                                'jogo':id_jogo,
+                                'gols_mandante':form[id_mandante_form],
+                                'gols_visitante': form[id_visitante_form]})
+
+def usuario_ja_existe(nome_usuario):
+    return tbl_usuario.find_one({'nome': nome_usuario}) != None
 
 def monta_dto_jogo(jogo):
     mandante = tbl_selecao.find_one({'_id': jogo["mandante"]})
     visitante = tbl_selecao.find_one({'_id': jogo["visitante"]})
-    return {"nome": jogo["nome"],
+    return {"_id": str(jogo["_id"]),
+            "nome": jogo["nome"],
             "escudo_mandante": mandante["escudo"],
             "escudo_visitante": visitante["escudo"],
             "nome_mandante": mandante["nome"],
@@ -78,8 +100,9 @@ def inclui_jogo_na_lista_rodadas(lista_rodadas, jogo):
         lista_rodadas.append({"numero": rodada_do_jogo,
                               "nome": '{0}ª Rodada'.format(rodada_do_jogo),
                               "jogos": jogos})
-
-    jogos.append(monta_dto_jogo(jogo))
+    dto_jogo = monta_dto_jogo(jogo)
+    jogos.append(dto_jogo)
+    todos_jogos.append(dto_jogo)
 
 
 def monta_dto_grupos():
