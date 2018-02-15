@@ -18,7 +18,7 @@ cmd.exe(a partir da pasta bolao):
 
 ```
 venv/Scripts/activate
-cd Projects
+cd Project
 set FLASK_APP=hello.py
 set FLASK_DEBUG=1
 flask run
