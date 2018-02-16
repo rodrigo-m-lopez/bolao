@@ -107,8 +107,8 @@ def inclui_jogo_na_lista_rodadas(lista_rodadas, jogo):
 
 def monta_dto_grupos():
     if not grupos:
-        for jogo in tbl_jogo.find({'grupo': 'Grupo A', 'rodada': 1}):  # para testar com menos jogos
-            # for jogo in tbl_jogo.find():
+        #for jogo in tbl_jogo.find({'grupo': 'Grupo A', 'rodada': 1}):  # para testar com menos jogos
+        for jogo in tbl_jogo.find():
             nome_grupo = jogo["grupo"]
             if nome_grupo not in grupos.keys():
                 grupos[nome_grupo] = {"nome": nome_grupo,
