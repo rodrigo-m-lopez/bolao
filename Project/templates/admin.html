@@ -1,3 +1,29 @@
 {% extends 'base.html' %}
 
+{% block content %}
+<ul class="list-group" style="width: 25rem;">
+<li class="list-group-item list-group-item-dark d-flex justify-content-between align-items-center">
+    <strong>Nome</strong>
+{% for usuario in lista_usuarios -%}
+	<li class="list-group-item d-flex justify-content-between align-items-center{% if not usuario.pago %} disabled{% endif %}">
+    {{ usuario.nome }}
+    <input type="checkbox" data-toggle="toggle" data-on="Pago" data-off="Não Pago" 
+		data-onstyle="success" data-offstyle="danger" {% if usuario.pago %}checked{% endif %}
+		onchange="togglePago(this)" name ="{{ usuario.nome }}">
+  </li>
+{% endfor %}
+</ul>
+{% endblock %}
+
+{% block script %}
+<script>
+	function togglePago(sender) {
+	  var xhttp = new XMLHttpRequest();
+	  xhttp.open("POST", "/toggle_pago", true);
+	  xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+	  xhttp.send("usuario=" + sender.name);
+	}
+</script>
+{% endblock %}
+
 {% set title = 'Admin' %}
