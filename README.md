@@ -20,7 +20,7 @@ git add requirements.txt
 git commit -m "atualizando as dependências"
 git push
 ```
-#MongoDB
+# MongoDB
 Instala o mongo desse caminho aqui (só sai clicando em next):
 https://www.mongodb.com/download-center#production
 Cria as pastas do Mongo no projeto:
