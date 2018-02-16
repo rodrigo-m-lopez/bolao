@@ -1,10 +1,53 @@
 # bolao
 
 Passos pra funcionar:
+Vou explicar só uma vez mesmo sabendo q vc é burro, quando aparecer (...) nos comandos troca pelo caminho que vc fez checkout do projeto
+# venv
+Instalar o venv, executar ele e instalar os requisitos do projeto:
+```
+cd (...)\bolao
+pip install virtualenv
+virtualenv venv
+venv\Scripts\activate
+cd Project
+pip install -r requirements.txt
+```
+Se for instalar mais alguma dependencia do python com pip install, abre o power shell e roda os comandos abaixo:
+```
+cd (...)\bolao\Project
+pip freeze > requirements.txt
+git add requirements.txt
+git commit -m "atualizando as dependências"
+git push
+```
+#MongoDB
+Instala o mongo desse caminho aqui (só sai clicando em next):
+https://www.mongodb.com/download-center#production
+Cria as pastas do Mongo no projeto:
+```
+cd (...)\bolao
+mkdir data
+cd data
+mkdir db
+mkdir log
+```
+Cria um arquivo "C:\Program Files\MongoDB\Server\3.6\mongod.cfg" com o conteúdo abaixo, precisa ser administrador:
 
-além dessa pasta project , cria um venv no mesmo nivel do projeto e usa o requirements.txt
-
-Instala o MongoDB e cria a pasta data no mesmo nivel da project com usuario padrão e configura um serviço pra startar com sua máquina
+```
+systemLog:
+    destination: file
+    path: (...)\bolao\data\log\mongod.log
+storage:
+    dbPath: (...)\bolao\data\db
+```
+Agora cria um serviço do mongo que vai startar com sua máquina, também precisa ser administrador:
+```
+sc.exe create MongoDB binPath= "\"C:\Program Files\MongoDB\Server\3.6\bin\mongod.exe\" --service --config=\"C:\Program Files\MongoDB\Server\3.6\mongod.cfg\"" DisplayName= "MongoDB" start= "auto"
+```
+Inicia o serviço:
+```
+net start MongoDB
+```
 
 # Pra rodar o crawler 
 Por enquanto só popula o banco com os jogos e os times, ainda falta atualizar as pontuações:
@@ -14,13 +57,11 @@ python GloboEsporteCrawler.py
 
 # Pra rodar o site:
 
-cmd.exe(a partir da pasta bolao):
-
 ```
+cd (...)\bolao
 venv/Scripts/activate
 cd Project
 set FLASK_APP=hello.py
 set FLASK_DEBUG=1
 flask run
 ```
-
