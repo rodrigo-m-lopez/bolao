@@ -1,3 +1,17 @@
 {% extends 'base.html' %}
 
+{% block content %}
+<ul class="list-group" style="width: 25rem;">
+<li class="list-group-item list-group-item-dark d-flex justify-content-between align-items-center">
+    <strong>Nome</strong>
+    <span class="badge badge-primary badge-pill"><strong>Pontuação</strong></span>
+{% for usuario in lista_usuarios -%}
+	<li class="list-group-item d-flex justify-content-between align-items-center{% if not usuario.pago %} disabled{% endif %}">
+    <a>{{ usuario.nome }}</a>
+    <span class="badge badge-primary badge-pill">{{ usuario.pontuacao }}</span>
+  </li>
+{% endfor %}
+</ul>
+{% endblock %}
+
 {% set title = 'Ranking' %}

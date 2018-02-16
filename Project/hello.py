@@ -36,13 +36,15 @@ def aposta():
 
 @app.route('/ranking')
 def ranking():
-    return render_template('ranking.html')
+    lista_usuarios = monta_dto_usuarios()
+    return render_template('ranking.html', lista_usuarios=lista_usuarios)
 
 
 @app.route('/admin', methods=['GET', 'POST'])
 def admin():
     if request.method == 'GET':
-        return render_template('admin.html')
+        lista_usuarios = monta_dto_usuarios()
+        return render_template('admin.html', lista_usuarios=lista_usuarios)
     else:
         pass
 
@@ -56,6 +58,25 @@ def valida_usuario():
     else:
         return ''
 
+@app.route('/toggle_pago', methods=['POST'])
+def toggle_pago():
+    nome_usuario = request.form['usuario']
+    usuario = tbl_usuario.find_one({'nome': nome_usuario})
+    novo_pago = not usuario['pago']
+
+    tbl_usuario.update_one({"nome": nome_usuario},
+                        {"$set": {"pago": novo_pago}})
+    return 'on' if novo_pago else 'off'
+
+def monta_dto_usuarios():
+    lista_retorno = []
+
+    for usuario in tbl_usuario.find():
+        lista_retorno.append({"nome": usuario["nome"],
+                              "pontuacao": 0,
+                              "pago": usuario["pago"]})
+    return lista_retorno
+
 def insere_palpites(usuario, form):
     for jogo in todos_jogos:
         id_jogo = jogo["_id"]
@@ -64,7 +85,7 @@ def insere_palpites(usuario, form):
         id_visitante_form = 'v{0}'.format(id_jogo)
         tbl_palpite.insert_one({'usuario':id_usuario,
                                 'jogo':id_jogo,
-                                'gols_mandante':form[id_mandante_form],
+                                'gols_mandante': form[id_mandante_form],
                                 'gols_visitante': form[id_visitante_form]})
 
 def usuario_ja_existe(nome_usuario):
@@ -117,3 +138,4 @@ def monta_dto_grupos():
             rodadas = grupos[nome_grupo]["rodadas"]
             inclui_jogo_na_lista_rodadas(rodadas, jogo)
     return grupos.values()
+
