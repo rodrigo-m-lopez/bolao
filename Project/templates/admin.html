@@ -5,11 +5,11 @@
 <li class="list-group-item list-group-item-dark d-flex justify-content-between align-items-center">
     <strong>Nome</strong>
 {% for usuario in lista_usuarios -%}
-	<li class="list-group-item d-flex justify-content-between align-items-center{% if not usuario.pago %} disabled{% endif %}">
+	<li class="list-group-item d-flex justify-content-between align-items-center">
     {{ usuario.nome }}
-    <input type="checkbox" data-toggle="toggle" data-on="Pago" data-off="Não Pago" 
+    <input type="checkbox" data-toggle="toggle" data-size="small" data-on="Pago" data-off="Não Pago" 
 		data-onstyle="success" data-offstyle="danger" {% if usuario.pago %}checked{% endif %}
-		onchange="togglePago(this)" name ="{{ usuario.nome }}">
+		onchange="togglePago(this)" name ="{{ usuario.nome }}" >
   </li>
 {% endfor %}
 </ul>
