@@ -50,7 +50,7 @@ net start MongoDB
 ```
 
 # Pra rodar o crawler 
-Por enquanto só popula o banco com os jogos e os times, ainda falta atualizar as pontuações:
+O crawler popula o banco na primeira vez e depois calcula a pontuação se teve alteração pra ultima vez:
 ```
 python GloboEsporteCrawler.py
 ```
