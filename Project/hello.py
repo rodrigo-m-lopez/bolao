@@ -3,6 +3,7 @@ from flask import Flask
 from flask import request
 from flask import render_template
 from pymongo import MongoClient
+from operator import itemgetter
 
 client = MongoClient()
 db = client.dev
@@ -10,6 +11,7 @@ tbl_jogo = db.jogo
 tbl_selecao = db.selecao
 tbl_usuario = db.usuario
 tbl_palpite = db.palpite
+tbl_pontuacao = db.pontuacao
 app = Flask(__name__)
 grupos = {}
 todos_jogos = []
@@ -19,6 +21,7 @@ todos_jogos = []
 def inicio():
     return ranking()
 
+
 @app.route('/aposta', methods=['GET', 'POST'])
 def aposta():
     grupos = monta_dto_grupos()
@@ -27,12 +30,14 @@ def aposta():
     else:
         if not usuario_ja_existe(request.form['inputNome']):
             id_usuario = tbl_usuario.insert_one({'nome': request.form['inputNome'],
-                                    'email': request.form['inputEmail'],
-                                    'pago': False}).inserted_id
+                                                 'email': request.form['inputEmail'],
+                                                 'pago': False}).inserted_id
             insere_palpites(id_usuario, request.form)
+            insere_pontuacoes(id_usuario)
             return ranking()
         else:
             return render_template('aposta.html', grupos=grupos, nome_existente=request.form['inputNome'])
+
 
 @app.route('/ranking')
 def ranking():
@@ -48,6 +53,7 @@ def admin():
     else:
         pass
 
+
 @app.route('/valida_usuario', methods=['POST'])
 def valida_usuario():
     novo_usuario = request.form['novo_usuario']
@@ -58,6 +64,7 @@ def valida_usuario():
     else:
         return ''
 
+
 @app.route('/toggle_pago', methods=['POST'])
 def toggle_pago():
     nome_usuario = request.form['usuario']
@@ -65,17 +72,35 @@ def toggle_pago():
     novo_pago = not usuario['pago']
 
     tbl_usuario.update_one({"nome": nome_usuario},
-                        {"$set": {"pago": novo_pago}})
+                           {"$set": {"pago": novo_pago}})
     return 'on' if novo_pago else 'off'
+
+
+def totaliza_pontuacao(id_usuario):
+    total = 0
+    for pontuacao in tbl_pontuacao.find({'usuario': id_usuario}):
+        total = total + pontuacao["pontos"]
+    return total
 
 def monta_dto_usuarios():
     lista_retorno = []
 
     for usuario in tbl_usuario.find():
+        pontuacao_usuario = totaliza_pontuacao(str(usuario["_id"]))
         lista_retorno.append({"nome": usuario["nome"],
-                              "pontuacao": 0,
+                              "pontuacao": pontuacao_usuario,
                               "pago": usuario["pago"]})
-    return lista_retorno
+    return sorted(lista_retorno, key=itemgetter('pontuacao'), reverse=True)
+
+
+def insere_pontuacoes(usuario):
+    for jogo in todos_jogos:
+        id_jogo = jogo["_id"]
+        id_usuario = str(usuario)
+        tbl_pontuacao.insert_one({'usuario': id_usuario,
+                                  'jogo': id_jogo,
+                                  'pontos': 0})
+
 
 def insere_palpites(usuario, form):
     for jogo in todos_jogos:
@@ -83,13 +108,15 @@ def insere_palpites(usuario, form):
         id_usuario = str(usuario)
         id_mandante_form = 'm{0}'.format(id_jogo)
         id_visitante_form = 'v{0}'.format(id_jogo)
-        tbl_palpite.insert_one({'usuario':id_usuario,
-                                'jogo':id_jogo,
+        tbl_palpite.insert_one({'usuario': id_usuario,
+                                'jogo': id_jogo,
                                 'gols_mandante': form[id_mandante_form],
                                 'gols_visitante': form[id_visitante_form]})
 
+
 def usuario_ja_existe(nome_usuario):
     return tbl_usuario.find_one({'nome': nome_usuario}) != None
+
 
 def monta_dto_jogo(jogo):
     mandante = tbl_selecao.find_one({'_id': jogo["mandante"]})
@@ -128,7 +155,7 @@ def inclui_jogo_na_lista_rodadas(lista_rodadas, jogo):
 
 def monta_dto_grupos():
     if not grupos:
-        #for jogo in tbl_jogo.find({'grupo': 'Grupo A', 'rodada': 1}):  # para testar com menos jogos
+        # for jogo in tbl_jogo.find({'grupo': 'Grupo A', 'rodada': 1}):  # para testar com menos jogos
         for jogo in tbl_jogo.find():
             nome_grupo = jogo["grupo"]
             if nome_grupo not in grupos.keys():
@@ -138,4 +165,3 @@ def monta_dto_grupos():
             rodadas = grupos[nome_grupo]["rodadas"]
             inclui_jogo_na_lista_rodadas(rodadas, jogo)
     return grupos.values()
-
