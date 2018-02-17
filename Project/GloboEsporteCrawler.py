@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup
 from datetime import datetime
 import os
 import pathlib
+from bson import ObjectId
 
 modo_teste = True
 
@@ -62,13 +63,15 @@ def calcula_pontuacao(mandante_real, visitante_real, mandante_palpite, visitante
 def calcula_pontos_usuarios(id_jogo, gols_mandante_real, gols_visitante_real):
     for palpite in tbl_palpite.find({'jogo': id_jogo}):
         usuario = palpite['usuario']
+        jogo_pago = tbl_usuario.find_one({'_id': ObjectId(usuario)})['pago']
         gols_mandante_palpite = palpite['gols_mandante']
         gols_visitante_palpite = palpite['gols_visitante']
         pontos = calcula_pontuacao(gols_mandante_real, gols_visitante_real, gols_mandante_palpite,
                                    gols_visitante_palpite)
         print('\t{1} x {2} : {0} pontos'.format(pontos, gols_mandante_palpite, gols_visitante_palpite))
-        tbl_pontuacao.update_one({'usuario': usuario, 'jogo': id_jogo},
-                                 {"$set": {"pontos": pontos}})
+        if jogo_pago:
+            tbl_pontuacao.update_one({'usuario': usuario, 'jogo': id_jogo},
+                                     {"$set": {"pontos": pontos}})
 
 
 def cria_arquivo(caminho, conteudo):
