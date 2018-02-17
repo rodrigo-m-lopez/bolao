@@ -6,8 +6,9 @@
     <strong>Nome</strong>
     <span class="badge badge-primary badge-pill"><strong>Pontuação</strong></span>
 {% for usuario in lista_usuarios -%}
-	<li class="list-group-item d-flex justify-content-between align-items-center{% if not usuario.pago %} disabled{% endif %}">
+	<li class="list-group-item d-flex justify-content-between align-items-center{% if not usuario.pago %} list-group-item-danger{% endif %}">
     <a>{{ usuario.nome }}</a>
+	{% if not usuario.pago %}<small class="text-muted">Não Pago</small>{% endif %}
     <span class="badge badge-primary badge-pill">{{ usuario.pontuacao }}</span>
   </li>
 {% endfor %}
