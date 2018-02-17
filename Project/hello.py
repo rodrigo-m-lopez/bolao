@@ -110,8 +110,8 @@ def insere_palpites(usuario, form):
         id_visitante_form = 'v{0}'.format(id_jogo)
         tbl_palpite.insert_one({'usuario': id_usuario,
                                 'jogo': id_jogo,
-                                'gols_mandante': form[id_mandante_form],
-                                'gols_visitante': form[id_visitante_form]})
+                                'gols_mandante': int(form[id_mandante_form]),
+                                'gols_visitante': int(form[id_visitante_form])})
 
 
 def usuario_ja_existe(nome_usuario):
