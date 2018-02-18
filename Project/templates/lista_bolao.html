@@ -1,0 +1,13 @@
+{% extends 'menu_gerencia_bolao.html' %}
+
+{% block content %}
+<ul class="list-group" style="width: 25rem;">
+<li class="list-group-item list-group-item-dark d-flex justify-content-between align-items-center">
+    <strong>Nome</strong>
+</ul>
+{% for bolao in lista_boloes -%}
+  <a href="{{ bolao.nome }}/ranking" class="list-group-item list-group-item-action" style="width: 25rem;">{{ bolao.nome }}</a>
+{% endfor %}
+{% endblock %}
+
+{% set title = 'Bolões' %}
