@@ -4,12 +4,15 @@ from flask import request
 from flask import render_template
 from pymongo import MongoClient
 from operator import itemgetter
+import uuid
+import hashlib
 
 client = MongoClient()
 db = client.dev
 tbl_jogo = db.jogo
 tbl_selecao = db.selecao
 tbl_usuario = db.usuario
+tbl_bolao = db.bolao
 tbl_palpite = db.palpite
 tbl_pontuacao = db.pontuacao
 app = Flask(__name__)
@@ -19,62 +22,147 @@ todos_jogos = []
 
 @app.route('/')
 def inicio():
-    return ranking()
+    return lista_bolao()
 
 
-@app.route('/aposta', methods=['GET', 'POST'])
-def aposta():
-    grupos = monta_dto_grupos()
+@app.route('/novo_bolao', methods=['GET', 'POST'])
+def novo_bolao():
     if request.method == 'GET':
-        return render_template('aposta.html', grupos=grupos)
+        return render_template('novo_bolao.html')
     else:
-        if not usuario_ja_existe(request.form['inputNome']):
+        erro_validacao = valida_informacoes_bolao(request.form)
+        if erro_validacao:
+            return render_template('novo_bolao.html', erro=erro_validacao)
+        cria_bolao(request.form)
+        return lista_bolao()
+
+@app.route('/lista_bolao')
+def lista_bolao():
+    boloes = monta_dto_boloes()
+    return render_template('lista_bolao.html', lista_boloes=boloes)
+
+@app.route('/<bolao>/aposta', methods=['GET', 'POST'])
+def aposta(bolao):
+    grupos = monta_dto_grupos()
+    id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
+    if request.method == 'GET':
+        return render_template('aposta.html', grupos=grupos, bolao=bolao)
+    else:
+        if not usuario_ja_existe(request.form['inputNome'], id_bolao):
             id_usuario = tbl_usuario.insert_one({'nome': request.form['inputNome'],
                                                  'email': request.form['inputEmail'],
+                                                 'bolao': id_bolao,
                                                  'pago': False}).inserted_id
             insere_palpites(id_usuario, request.form)
             insere_pontuacoes(id_usuario)
-            return ranking()
+            return ranking(bolao)
         else:
-            return render_template('aposta.html', grupos=grupos, nome_existente=request.form['inputNome'])
+            return render_template('aposta.html', bolao=bolao, grupos=grupos, nome_existente=request.form['inputNome'])
 
 
-@app.route('/ranking')
-def ranking():
-    lista_usuarios = monta_dto_usuarios()
-    return render_template('ranking.html', lista_usuarios=lista_usuarios)
+@app.route('/<bolao>/ranking')
+def ranking(bolao):
+    lista_usuarios = monta_dto_usuarios(bolao)
+    return render_template('ranking.html', bolao=bolao, lista_usuarios=lista_usuarios)
 
 
-@app.route('/admin', methods=['GET', 'POST'])
-def admin():
+@app.route('/<bolao>/admin', methods=['GET', 'POST'])
+def admin(bolao):
     if request.method == 'GET':
-        lista_usuarios = monta_dto_usuarios()
-        return render_template('admin.html', lista_usuarios=lista_usuarios)
+        lista_usuarios = monta_dto_usuarios(bolao)
+        return render_template('admin.html', bolao=bolao, lista_usuarios=lista_usuarios)
     else:
         pass
 
+@app.route('/valida_nome_bolao', methods=['POST'])
+def valida_nome_bolao():
+    nome_bolao = request.form['nome_bolao']
+    return valida_nome_bolao_ja_existe(nome_bolao)
 
-@app.route('/valida_usuario', methods=['POST'])
-def valida_usuario():
+
+@app.route('/<bolao>/valida_usuario', methods=['POST'])
+def valida_usuario(bolao):
     novo_usuario = request.form['novo_usuario']
+    id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
 
-    if usuario_ja_existe(novo_usuario):
-        return '''<div class="alert alert-danger alert-dismissible fade show" style="width: 52rem;">
-	              Nome <Strong>{0}</Strong> já existe para este bolão, escolha outro</div>'''.format(novo_usuario)
+    if usuario_ja_existe(novo_usuario, id_bolao):
+        return '''Nome <Strong>{0}</Strong> já existe para este bolão, escolha outro'''.format(novo_usuario)
     else:
         return ''
 
 
-@app.route('/toggle_pago', methods=['POST'])
-def toggle_pago():
+@app.route('/<bolao>/toggle_pago', methods=['POST'])
+def toggle_pago(bolao):
+    id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
     nome_usuario = request.form['usuario']
-    usuario = tbl_usuario.find_one({'nome': nome_usuario})
+    usuario = tbl_usuario.find_one({'nome': nome_usuario, 'bolao': id_bolao})
     novo_pago = not usuario['pago']
 
-    tbl_usuario.update_one({"nome": nome_usuario},
+    tbl_usuario.update_one({"nome": nome_usuario,
+                            'bolao': id_bolao},
                            {"$set": {"pago": novo_pago}})
     return 'on' if novo_pago else 'off'
 
+def hash_password(password):
+    salt = uuid.uuid4().hex
+    return hashlib.sha256(salt.encode() + password.encode()).hexdigest() + ':' + salt
+
+def check_password(hashed_password, user_password):
+    password, salt = hashed_password.split(':')
+    return password == hashlib.sha256(salt.encode() + user_password.encode()).hexdigest()
+
+def cria_bolao(form):
+    tbl_bolao.insert_one({'nome': form['inputNome'],
+                          'responsavel': form['inputResponsavel'],
+                          'email': form['inputEmail'],
+                          'valor': int(form['inputValor']),
+                          'senhaAdmin': hash_password(form['inputSenhaAdmin']),
+                          'descricao': form['inputDescricao']})
+
+
+def valida_nome_bolao_ja_existe(nome_bolao):
+    if tbl_bolao.find_one({'nome': nome_bolao}) is not None:
+        return '''Nome <Strong>{0}</Strong> já foi escolhido para um bolão, escolha outro'''.format(nome_bolao)
+    else:
+        return ''
+
+
+def valida_campo_preenchido(valor_campo, nome_campo):
+    if valor_campo == '':
+        return '''Campo <Strong>{0}</Strong> é de preenchimento obrigatório'''.format(nome_campo)
+    else:
+        return ''
+
+
+def valida_campo_numerico(valor_campo):
+    try:
+        inteiro = int(valor_campo.strip())
+        if inteiro < 0:
+            return 'O campo valor não pode ser negativo'
+        return ''
+    except ValueError:
+        return 'O campo Valor precisa ser um número'
+
+
+def valida_senhas_iguais(senha1, senha2):
+    if senha1 != senha2:
+        return 'Senhas não conferem.'
+    return ''
+
+
+def valida_informacoes_bolao(form):
+    validacoes = [valida_nome_bolao_ja_existe(form['inputNome']),
+                  valida_campo_preenchido(form['inputResponsavel'], 'Responsável'),
+                  valida_campo_preenchido(form['inputEmail'], 'Email do Responsável'),
+                  valida_campo_preenchido(form['inputValor'], 'Valor'),
+                  valida_campo_numerico(form['inputValor']),
+                  valida_campo_preenchido(form['inputSenhaAdmin'], 'Senha do Admin'),
+                  valida_campo_preenchido(form['inputSenhaAdminRepetida'], 'Repetição da senha do Admin'),
+                  valida_senhas_iguais(form['inputSenhaAdmin'], form['inputSenhaAdminRepetida'])]
+    for erro in validacoes:
+        if erro > '':
+            return erro
+    return ''
 
 def totaliza_pontuacao(id_usuario):
     total = 0
@@ -82,10 +170,10 @@ def totaliza_pontuacao(id_usuario):
         total = total + pontuacao["pontos"]
     return total
 
-def monta_dto_usuarios():
+def monta_dto_usuarios(bolao):
     lista_retorno = []
-
-    for usuario in tbl_usuario.find():
+    id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
+    for usuario in tbl_usuario.find({'bolao': id_bolao}):
         pontuacao_usuario = totaliza_pontuacao(str(usuario["_id"]))
         lista_retorno.append({"nome": usuario["nome"],
                               "pontuacao": pontuacao_usuario,
@@ -114,8 +202,8 @@ def insere_palpites(usuario, form):
                                 'gols_visitante': int(form[id_visitante_form])})
 
 
-def usuario_ja_existe(nome_usuario):
-    return tbl_usuario.find_one({'nome': nome_usuario}) != None
+def usuario_ja_existe(nome_usuario, id_bolao):
+    return tbl_usuario.find_one({'nome': nome_usuario, 'bolao': id_bolao}) is not None
 
 
 def monta_dto_jogo(jogo):
@@ -152,6 +240,12 @@ def inclui_jogo_na_lista_rodadas(lista_rodadas, jogo):
     jogos.append(dto_jogo)
     todos_jogos.append(dto_jogo)
 
+
+def monta_dto_boloes():
+    dto_boloes = []
+    for bolao in tbl_bolao.find():
+        dto_boloes.append({'nome': bolao['nome']})
+    return dto_boloes
 
 def monta_dto_grupos():
     if not grupos:
