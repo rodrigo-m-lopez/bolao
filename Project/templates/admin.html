@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends 'menu_base.html' %}
 
 {% block content %}
 <ul class="list-group" style="width: 25rem;">
@@ -19,7 +19,7 @@
 <script>
 	function togglePago(sender) {
 	  var xhttp = new XMLHttpRequest();
-	  xhttp.open("POST", "/toggle_pago", true);
+	  xhttp.open("POST", "/{{ bolao }}/toggle_pago", true);
 	  xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
 	  xhttp.send("usuario=" + sender.name);
 	}
