@@ -6,8 +6,12 @@ from datetime import datetime
 import os
 import pathlib
 from bson import ObjectId
+import argparse
 
-modo_teste = True
+parser = argparse.ArgumentParser()
+parser.add_argument("--test", help="Modo Teste, verifica em pastas locais por resultados", action='store_true')
+args = parser.parse_args()
+modo_teste = args.test
 
 PONTUACAO_PLACAR_EXATO = 18
 PONTUACAO_VENCEDOR_OU_EMPATE = 9
@@ -63,12 +67,14 @@ def calcula_pontuacao(mandante_real, visitante_real, mandante_palpite, visitante
 def calcula_pontos_usuarios(id_jogo, gols_mandante_real, gols_visitante_real):
     for palpite in tbl_palpite.find({'jogo': id_jogo}):
         usuario = palpite['usuario']
-        jogo_pago = tbl_usuario.find_one({'_id': ObjectId(usuario)})['pago']
+        usuario_banco = tbl_usuario.find_one({'_id': ObjectId(usuario)})		
+        jogo_pago = usuario_banco['pago']
+        nome_usuario = usuario_banco['nome']
         gols_mandante_palpite = palpite['gols_mandante']
         gols_visitante_palpite = palpite['gols_visitante']
         pontos = calcula_pontuacao(gols_mandante_real, gols_visitante_real, gols_mandante_palpite,
                                    gols_visitante_palpite)
-        print('\t{1} x {2} : {0} pontos'.format(pontos, gols_mandante_palpite, gols_visitante_palpite))
+        print('\tPalpite {3} {1} x {2} : {0} pontos'.format(pontos, gols_mandante_palpite, gols_visitante_palpite, nome_usuario))
         if jogo_pago:
             tbl_pontuacao.update_one({'usuario': usuario, 'jogo': id_jogo},
                                      {"$set": {"pontos": pontos}})
@@ -113,7 +119,8 @@ def monta_jogo():
                     "gols_mandante": gols_mandante,
                     "gols_visitante": gols_visitante,
                     "grupo": nome_grupo,
-                    "rodada": rodada}
+                    "rodada": rodada,
+                    "url_rodada": url_relativa_rodada}
         tbl_jogo.insert_one(jogo_obj).inserted_id
     elif gols_mandante != gols_mandante_banco or gols_visitante != gols_visitante_banco:
         id_jogo = str(jogo_banco['_id'])
@@ -151,12 +158,11 @@ for secao_grupo in pagina.find_all('section', {'class': 'section-container'}):
     numero_rodadas = 3
     for i in range(numero_rodadas):
         rodada = i + 1
-        url_rodada = url_base + url_base_rodadas + str(rodada) + '/jogos.html'
+        url_relativa_rodada = url_base_rodadas + str(rodada) + '/jogos.html'
+        url_rodada = url_base + url_relativa_rodada
 
         pagina_rodada = get_soup(url_rodada)
-        # cria arquivos para testar o crawler apontando para arquivos locais
-        #url_teste_rodada = url_teste + url_base_rodadas + str(rodada) + '/jogos.html'
-        #cria_arquivo(url_teste_rodada, pagina_rodada.prettify())
+
         for jogo in pagina_rodada.find_all('div', {'class': 'placar-jogo'}):
             mandante = jogo.find('span', {'class': 'placar-jogo-equipes-item placar-jogo-equipes-mandante'})
             visitante = jogo.find('span', {'class': 'placar-jogo-equipes-item placar-jogo-equipes-visitante'})
