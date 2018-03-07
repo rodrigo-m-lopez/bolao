@@ -8,160 +8,166 @@ import pathlib
 from bson import ObjectId
 import argparse
 
-def get_soup(url, teste, prints=False):
-    if not teste:
-        text = requests.get(url).text
-    else:
-        with open(url, 'r', encoding='latin-1') as myfile:
-            text = myfile.read()
-    if prints:
-        print(text)
-    return BeautifulSoup(text, "html.parser")
+class Crawler:
+
+    def __init__(self, teste):
+        self.teste = teste
+        self.pattern_hora = re.compile(r'\d{2}:\d{2}')
+
+        client = MongoClient()
+        db = client.dev
+
+        self.tbl_selecao = db.selecao
+        self.tbl_jogo = db.jogo
+        self.tbl_usuario = db.usuario
+        self.tbl_palpite = db.palpite
+        self.tbl_pontuacao = db.pontuacao
+
+        url_teste = os.path.abspath("teste_crawler")
+
+        self.url_base = url_teste if teste else 'http://globoesporte.globo.com'
+        url_base_info = self.url_base + '/futebol/copa-do-mundo/classificacao.html'
+
+        self.pagina = self.get_soup(url_base_info)
+
+    def get_soup(self, url, prints=False):
+        if not self.teste:
+            text = requests.get(url).text
+        else:
+            with open(url, 'r', encoding='latin-1') as myfile:
+                text = myfile.read()
+        if prints:
+            print(text)
+        return BeautifulSoup(text, "html.parser")
 
 
-def monta_selecao(span_informacoes, nome_grupo, tbl_selecao):
-    sigla = span_informacoes.find('span', {'class': 'placar-jogo-equipes-sigla'}).text.strip()
-    selecao_banco = tbl_selecao.find_one({"sigla": sigla})
+    def monta_selecao(self, span_informacoes):
+        sigla = span_informacoes.find('span', {'class': 'placar-jogo-equipes-sigla'}).text.strip()
+        selecao_banco = self.tbl_selecao.find_one({"sigla": sigla})
 
-    if selecao_banco:
-        return selecao_banco["_id"]
-    else:
-        nome = span_informacoes.find('span', {'class': 'placar-jogo-equipes-nome'}).text.strip()
-        escudo = span_informacoes.find('img')['src']
-        time = {"nome": nome,
-                "sigla": sigla,
-                "escudo": escudo,
-                "grupo": nome_grupo}
-        return tbl_selecao.insert_one(time).inserted_id
-
-
-def resultado(gols_mandante, gols_visitante):
-    # se mandante ganha retorna 1, empate 0, visitante -1
-    return (gols_mandante > gols_visitante) - (gols_mandante < gols_visitante)
+        if selecao_banco:
+            return selecao_banco["_id"]
+        else:
+            nome = span_informacoes.find('span', {'class': 'placar-jogo-equipes-nome'}).text.strip()
+            escudo = span_informacoes.find('img')['src']
+            time = {"nome": nome,
+                    "sigla": sigla,
+                    "escudo": escudo,
+                    "grupo": self.nome_grupo}
+            return self.tbl_selecao.insert_one(time).inserted_id
 
 
-def calcula_pontuacao(mandante_real, visitante_real, mandante_palpite, visitante_palpite):
-    if mandante_real is None or visitante_real is None:
-        return 0
-
-    if mandante_real == mandante_palpite and visitante_real == visitante_palpite:
-        return PONTUACAO_PLACAR_EXATO
-
-    pontuacao = 0
-    if resultado(mandante_real, visitante_real) == resultado(mandante_palpite, visitante_palpite):
-        pontuacao = pontuacao + PONTUACAO_VENCEDOR_OU_EMPATE
-
-    if mandante_real == mandante_palpite or visitante_real == visitante_palpite:
-        pontuacao = pontuacao + PONTUACAO_GOLS_DE_UM_TIME
-
-    return pontuacao
+    def resultado(self,gols_mandante, gols_visitante):
+        # se mandante ganha retorna 1, empate 0, visitante -1
+        return (gols_mandante > gols_visitante) - (gols_mandante < gols_visitante)
 
 
-def calcula_pontos_usuarios(id_jogo, gols_mandante_real, gols_visitante_real, tbl_palpite, tbl_usuario, tbl_pontuacao):
-    for palpite in tbl_palpite.find({'jogo': id_jogo}):
-        usuario = palpite['usuario']
-        usuario_banco = tbl_usuario.find_one({'_id': ObjectId(usuario)})
-        jogo_pago = usuario_banco['pago']
-        nome_usuario = usuario_banco['nome']
-        gols_mandante_palpite = palpite['gols_mandante']
-        gols_visitante_palpite = palpite['gols_visitante']
-        pontos = calcula_pontuacao(gols_mandante_real, gols_visitante_real, gols_mandante_palpite,
-                                   gols_visitante_palpite)
-        print('\tPalpite {3} {1} x {2} : {0} pontos'.format(pontos, gols_mandante_palpite, gols_visitante_palpite, nome_usuario))
-        if jogo_pago:
-            tbl_pontuacao.update_one({'usuario': usuario, 'jogo': id_jogo},
-                                     {"$set": {"pontos": pontos}})
+    def calcula_pontuacao(self,mandante_real, visitante_real, mandante_palpite, visitante_palpite):
+        if mandante_real is None or visitante_real is None:
+            return 0
+
+        if mandante_real == mandante_palpite and visitante_real == visitante_palpite:
+            return PONTUACAO_PLACAR_EXATO
+
+        pontuacao = 0
+        if self.resultado(mandante_real, visitante_real) == self.resultado(mandante_palpite, visitante_palpite):
+            pontuacao = pontuacao + PONTUACAO_VENCEDOR_OU_EMPATE
+
+        if mandante_real == mandante_palpite or visitante_real == visitante_palpite:
+            pontuacao = pontuacao + PONTUACAO_GOLS_DE_UM_TIME
+
+        return pontuacao
 
 
-def cria_arquivo(caminho, conteudo):
-    diretorio = os.path.dirname(caminho)
-    pathlib.Path(diretorio).mkdir(parents=True, exist_ok=True)
-    with open(caminho, "w+") as f:
-        f.write(conteudo)
+    def calcula_pontos_usuarios(self, id_jogo, gols_mandante_real, gols_visitante_real):
+        for palpite in self.tbl_palpite.find({'jogo': id_jogo}):
+            usuario = palpite['usuario']
+            usuario_banco = self.tbl_usuario.find_one({'_id': ObjectId(usuario)})
+            jogo_pago = usuario_banco['pago']
+            nome_usuario = usuario_banco['nome']
+            gols_mandante_palpite = palpite['gols_mandante']
+            gols_visitante_palpite = palpite['gols_visitante']
+            pontos = self.calcula_pontuacao(gols_mandante_real, gols_visitante_real, gols_mandante_palpite,
+                                       gols_visitante_palpite)
+            print('\tPalpite {3} {1} x {2} : {0} pontos'.format(pontos, gols_mandante_palpite, gols_visitante_palpite, nome_usuario))
+            if jogo_pago:
+                self.tbl_pontuacao.update_one({'usuario': usuario, 'jogo': id_jogo},
+                                         {"$set": {"pontos": pontos}})
 
 
-def txt_to_int(text):
-    try:
-        return int(text.strip())
-    except ValueError:
-        return None
+    def cria_arquivo(self, caminho, conteudo):
+        diretorio = os.path.dirname(caminho)
+        pathlib.Path(diretorio).mkdir(parents=True, exist_ok=True)
+        with open(caminho, "w+") as f:
+            f.write(conteudo)
 
 
-def monta_jogo(jogo, id_mandante, id_visitante, nome_grupo, rodada, url_relativa_rodada, tbl_jogo, pattern_hora, tbl_palpite, tbl_usuario, tbl_pontuacao):
-    nome_jogo = jogo.find('meta', {'itemprop': 'name'})['content']
-
-    jogo_banco = tbl_jogo.find_one({"nome": nome_jogo})
-
-    gols_mandante = txt_to_int(jogo.find('span', {'class': 'placar-jogo-equipes-placar-mandante'}).text)
-    gols_visitante = txt_to_int(jogo.find('span', {'class': 'placar-jogo-equipes-placar-visitante'}).text)
-
-    if jogo_banco:
-        gols_mandante_banco = jogo_banco['gols_mandante']
-        gols_visitante_banco = jogo_banco['gols_visitante']
-
-    if not jogo_banco:
-        data = jogo.find('meta', {'itemprop': 'startDate'})['content']
-        texto_informacoes = jogo.find('div', {'class': 'placar-jogo-informacoes'}).text
-        hora = re.findall(pattern_hora, texto_informacoes)[0]
-        local = jogo.find('span', {'class': 'placar-jogo-informacoes-local'}).text
-        jogo_obj = {"nome": nome_jogo,
-                    "data": datetime.strptime('{0} {1}'.format(data, hora), '%Y-%m-%d %H:%M'),
-                    "local": local,
-                    "mandante": id_mandante,
-                    "visitante": id_visitante,
-                    "gols_mandante": gols_mandante,
-                    "gols_visitante": gols_visitante,
-                    "grupo": nome_grupo,
-                    "rodada": rodada,
-                    "url_rodada": url_relativa_rodada}
-        tbl_jogo.insert_one(jogo_obj).inserted_id
-    elif gols_mandante != gols_mandante_banco or gols_visitante != gols_visitante_banco:
-        id_jogo = str(jogo_banco['_id'])
-        tbl_jogo.update_one({"nome": nome_jogo},
-                            {"$set": {"gols_mandante": gols_mandante,
-                                      "gols_visitante": gols_visitante}})
-        print('Alteração de placar: {0} de {1} x {2} para {3} x {4}'.format(nome_jogo, gols_mandante_banco,
-                                                                            gols_visitante_banco, gols_mandante,
-                                                                            gols_visitante))
-        calcula_pontos_usuarios(id_jogo, gols_mandante, gols_visitante, tbl_palpite, tbl_usuario, tbl_pontuacao)
+    def txt_to_int(self, text):
+        try:
+            return int(text.strip())
+        except ValueError:
+            return None
 
 
-def executa(teste):
-    pattern_hora = re.compile(r'\d{2}:\d{2}')
+    def monta_jogo(self):
+        jogo = self.jogo
+        nome_jogo = jogo.find('meta', {'itemprop': 'name'})['content']
 
-    client = MongoClient()
-    db = client.dev
+        jogo_banco = self.tbl_jogo.find_one({"nome": nome_jogo})
 
-    tbl_selecao = db.selecao
-    tbl_jogo = db.jogo
-    tbl_usuario = db.usuario
-    tbl_palpite = db.palpite
-    tbl_pontuacao = db.pontuacao
+        gols_mandante = self.txt_to_int(jogo.find('span', {'class': 'placar-jogo-equipes-placar-mandante'}).text)
+        gols_visitante = self.txt_to_int(jogo.find('span', {'class': 'placar-jogo-equipes-placar-visitante'}).text)
 
-    url_teste = os.path.abspath("teste_crawler")
-    url_base = url_teste if teste else 'http://globoesporte.globo.com'
-    url_base_info = url_base + '/futebol/copa-do-mundo/classificacao.html'
+        if jogo_banco:
+            gols_mandante_banco = jogo_banco['gols_mandante']
+            gols_visitante_banco = jogo_banco['gols_visitante']
 
-    pagina = get_soup(url_base_info, teste)
+        if not jogo_banco:
+            data = jogo.find('meta', {'itemprop': 'startDate'})['content']
+            texto_informacoes = jogo.find('div', {'class': 'placar-jogo-informacoes'}).text
+            hora = re.findall(self.pattern_hora, texto_informacoes)[0]
+            local = jogo.find('span', {'class': 'placar-jogo-informacoes-local'}).text
+            jogo_obj = {"nome": nome_jogo,
+                        "data": datetime.strptime('{0} {1}'.format(data, hora), '%Y-%m-%d %H:%M'),
+                        "local": local,
+                        "mandante": self.id_mandante,
+                        "visitante": self.id_visitante,
+                        "gols_mandante": gols_mandante,
+                        "gols_visitante": gols_visitante,
+                        "grupo": self.nome_grupo,
+                        "rodada": self.rodada,
+                        "url_rodada": self.url_relativa_rodada}
+            self.tbl_jogo.insert_one(jogo_obj).inserted_id
+        elif gols_mandante != gols_mandante_banco or gols_visitante != gols_visitante_banco:
+            id_jogo = str(jogo_banco['_id'])
+            self.tbl_jogo.update_one({"nome": nome_jogo},
+                                {"$set": {"gols_mandante": gols_mandante,
+                                          "gols_visitante": gols_visitante}})
+            print('Alteração de placar: {0} de {1} x {2} para {3} x {4}'.format(nome_jogo, gols_mandante_banco,
+                                                                                gols_visitante_banco, gols_mandante,
+                                                                                gols_visitante))
+            self.calcula_pontos_usuarios(id_jogo, gols_mandante, gols_visitante)
 
-    for secao_grupo in pagina.find_all('section', {'class': 'section-container'}):
-        nome_grupo = secao_grupo.find('h2').text
-        url_base_rodadas = secao_grupo.find('aside', {'class': 'lista-de-jogos lista-de-jogos-dentro-grupo'})[
-            'data-url-pattern-navegador-jogos']
-        numero_rodadas = 3
-        for i in range(numero_rodadas):
-            rodada = i + 1
-            url_relativa_rodada = url_base_rodadas + str(rodada) + '/jogos.html'
-            url_rodada = url_base + url_relativa_rodada
 
-            pagina_rodada = get_soup(url_rodada, teste)
+    def executa(self):
+        for secao_grupo in self.pagina.find_all('section', {'class': 'section-container'}):
+            self.nome_grupo = secao_grupo.find('h2').text
+            url_base_rodadas = secao_grupo.find('aside', {'class': 'lista-de-jogos lista-de-jogos-dentro-grupo'})[
+                'data-url-pattern-navegador-jogos']
+            numero_rodadas = 3
+            for i in range(numero_rodadas):
+                rodada = i + 1
+                self.url_relativa_rodada = url_base_rodadas + str(rodada) + '/jogos.html'
+                url_rodada = self.url_base + self.url_relativa_rodada
 
-            for jogo in pagina_rodada.find_all('div', {'class': 'placar-jogo'}):
-                mandante = jogo.find('span', {'class': 'placar-jogo-equipes-item placar-jogo-equipes-mandante'})
-                visitante = jogo.find('span', {'class': 'placar-jogo-equipes-item placar-jogo-equipes-visitante'})
-                id_mandante = monta_selecao(mandante, nome_grupo, tbl_selecao)
-                id_visitante = monta_selecao(visitante, nome_grupo, tbl_selecao)
-                monta_jogo(jogo, id_mandante, id_visitante, nome_grupo, rodada, url_relativa_rodada, tbl_jogo, pattern_hora, tbl_palpite, tbl_usuario, tbl_pontuacao)
+                pagina_rodada = self.get_soup(url_rodada)
+
+                for self.jogo in pagina_rodada.find_all('div', {'class': 'placar-jogo'}):
+                    mandante = self.jogo.find('span', {'class': 'placar-jogo-equipes-item placar-jogo-equipes-mandante'})
+                    visitante = self.jogo.find('span', {'class': 'placar-jogo-equipes-item placar-jogo-equipes-visitante'})
+                    self.id_mandante = self.monta_selecao(mandante)
+                    self.id_visitante = self.monta_selecao(visitante)
+                    self.monta_jogo()
 
 modo_teste = False
 
@@ -174,7 +180,7 @@ if __name__ == "__main__":
     parser.add_argument("--test", help="Modo Teste, verifica em pastas locais por resultados", action='store_true')
     args = parser.parse_args()
     modo_teste = args.test
-    executa(modo_teste)
+    Crawler(modo_teste).executa()
 
 
 

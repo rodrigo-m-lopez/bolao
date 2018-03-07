@@ -45,7 +45,7 @@ def alterar_resultado(url_rodada_jogo):
 
 def executa_crawler_teste():
     print('Chamada Crawler:')
-    GloboEsporteCrawler.executa(True)
+    GloboEsporteCrawler.Crawler(True).executa()
 
 url_teste = os.path.abspath("teste_crawler")
 
