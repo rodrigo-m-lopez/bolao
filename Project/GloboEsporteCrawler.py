@@ -22,7 +22,7 @@ def get_soup(url, prints=False):
     if not modo_teste:
         text = requests.get(url).text
     else:
-        with open(url, 'r') as myfile:
+        with open(url, 'r', encoding='latin-1') as myfile:
             text = myfile.read()
     if prints:
         print(text)
@@ -51,6 +51,9 @@ def resultado(gols_mandante, gols_visitante):
 
 
 def calcula_pontuacao(mandante_real, visitante_real, mandante_palpite, visitante_palpite):
+    if mandante_real is None or visitante_real is None:
+        return 0
+
     if mandante_real == mandante_palpite and visitante_real == visitante_palpite:
         return PONTUACAO_PLACAR_EXATO
 
@@ -127,11 +130,10 @@ def monta_jogo():
         tbl_jogo.update_one({"nome": nome_jogo},
                             {"$set": {"gols_mandante": gols_mandante,
                                       "gols_visitante": gols_visitante}})
-        if gols_mandante is not None and gols_visitante is not None:
-            print('Alteração de placar: {0} de {1} x {2} para {3} x {4}'.format(nome_jogo, gols_mandante_banco,
-                                                                                gols_visitante_banco, gols_mandante,
-                                                                                gols_visitante))
-            calcula_pontos_usuarios(id_jogo, gols_mandante, gols_visitante)
+        print('Alteração de placar: {0} de {1} x {2} para {3} x {4}'.format(nome_jogo, gols_mandante_banco,
+                                                                            gols_visitante_banco, gols_mandante,
+                                                                            gols_visitante))
+        calcula_pontos_usuarios(id_jogo, gols_mandante, gols_visitante)
 
 
 pattern_hora = re.compile(r'\d{2}:\d{2}')

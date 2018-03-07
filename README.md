@@ -65,3 +65,22 @@ set FLASK_APP=hello.py
 set FLASK_DEBUG=1
 flask run
 ```
+
+# Configurando na amazon:
+
+```
+sudo yum clean all
+sudo yum update
+sudo yum install python36 python36-virtualenv python36-pip
+```
+
+eu copiei via ssh da minha máquna local a pasta bolao para ~/bolao, depois disso:
+
+```
+cd bolao
+python3.6 -m venv venv
+. venv/bin/activate
+cd Project/
+pip install -r requirements.txt
+```
+
