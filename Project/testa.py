@@ -3,6 +3,7 @@ from pymongo import MongoClient
 import sys
 from bs4 import BeautifulSoup
 import os
+import GloboEsporteCrawler
 
 encoding = 'latin-1'
 def get_soup(url, prints=False):
@@ -43,10 +44,8 @@ def alterar_resultado(url_rodada_jogo):
 
 
 def executa_crawler_teste():
-    if os.name == 'nt': #Windows
-        os.system(r"..\venv\Scripts\python.exe GloboEsporteCrawler.py --test")
-    else:
-        os.system(r"..\venv\bin\python GloboEsporteCrawler.py --test")
+    print('Chamada Crawler:')
+    GloboEsporteCrawler.executa(True)
 
 url_teste = os.path.abspath("teste_crawler")
 
@@ -100,8 +99,8 @@ if arg_jogo:
         print('Jogo {} x {} não existe.'.format(time_visitante, time_mandante))
 else:
     for jogo in tbl_jogo.find():
-        time_mandante = tbl_selecao.find_one({'id': jogo['mandante']})
-        time_visitante = tbl_selecao.find_one({'id': jogo['visitante']})
+        time_mandante = tbl_selecao.find_one({'_id': jogo['mandante']})['nome']
+        time_visitante = tbl_selecao.find_one({'_id': jogo['visitante']})['nome']
         altera_jogo()
     executa_crawler_teste()
 
