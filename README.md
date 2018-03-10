@@ -61,9 +61,7 @@ python GloboEsporteCrawler.py
 cd (...)\bolao
 venv/Scripts/activate
 cd Project
-set FLASK_APP=hello.py
-set FLASK_DEBUG=1
-flask run
+sudo python3 hello.py
 ```
 
 # Configurando na amazon:

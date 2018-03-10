@@ -1,3 +1,5 @@
+# coding: utf-8
+
 import pymongo
 from flask import Flask
 from flask import request
@@ -260,7 +262,6 @@ def monta_dto_grupos():
             rodadas = grupos[nome_grupo]["rodadas"]
             inclui_jogo_na_lista_rodadas(rodadas, jogo)
     return [grupos[x] for x in sorted(grupos)]
-
 
 
 if __name__ == '__main__':
