@@ -260,3 +260,8 @@ def monta_dto_grupos():
             rodadas = grupos[nome_grupo]["rodadas"]
             inclui_jogo_na_lista_rodadas(rodadas, jogo)
     return [grupos[x] for x in sorted(grupos)]
+
+
+
+if __name__ == '__main__':
+    app.run(debug=True,host='0.0.0.0', port=80)
