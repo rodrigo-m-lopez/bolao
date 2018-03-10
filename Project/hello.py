@@ -250,7 +250,7 @@ def monta_dto_boloes():
 def monta_dto_grupos():
     if not grupos:
         # for jogo in tbl_jogo.find({'grupo': 'Grupo A', 'rodada': 1}):  # para testar com menos jogos
-        for jogo in tbl_jogo.find():
+        for jogo in tbl_jogo.find().sort([("grupo", pymongo.ASCENDING), ("rodada", pymongo.ASCENDING), ("data", pymongo.ASCENDING)]):
             nome_grupo = jogo["grupo"]
             if nome_grupo not in grupos.keys():
                 grupos[nome_grupo] = {"nome": nome_grupo,
@@ -258,4 +258,4 @@ def monta_dto_grupos():
 
             rodadas = grupos[nome_grupo]["rodadas"]
             inclui_jogo_na_lista_rodadas(rodadas, jogo)
-    return grupos.values()
+    return [grupos[x] for x in sorted(grupos)]
