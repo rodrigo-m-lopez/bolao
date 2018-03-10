@@ -120,6 +120,7 @@ def cria_bolao(form):
                           'descricao': form['inputDescricao']})
 
 
+
 def valida_nome_bolao_ja_existe(nome_bolao):
     if tbl_bolao.find_one({'nome': nome_bolao}) is not None:
         return '''Nome <Strong>{0}</Strong> já foi escolhido para um bolão, escolha outro'''.format(nome_bolao)
