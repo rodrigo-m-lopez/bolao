@@ -1,4 +1,4 @@
-# coding: utf-8
+# coding: latin-1
 
 import pymongo
 from flask import Flask
@@ -88,7 +88,7 @@ def valida_usuario(bolao):
     id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
 
     if usuario_ja_existe(novo_usuario, id_bolao):
-        return '''Nome <Strong>{0}</Strong> jÃ¡ existe para este bolÃ£o, escolha outro'''.format(novo_usuario)
+        return '''Nome <Strong>{0}</Strong> já existe para este bolão, escolha outro'''.format(novo_usuario)
     else:
         return ''
 
@@ -125,14 +125,14 @@ def cria_bolao(form):
 
 def valida_nome_bolao_ja_existe(nome_bolao):
     if tbl_bolao.find_one({'nome': nome_bolao}) is not None:
-        return '''Nome <Strong>{0}</Strong> jÃ¡ foi escolhido para um bolÃ£o, escolha outro'''.format(nome_bolao)
+        return '''Nome <Strong>{0}</Strong> já foi escolhido para um bolão, escolha outro'''.format(nome_bolao)
     else:
         return ''
 
 
 def valida_campo_preenchido(valor_campo, nome_campo):
     if valor_campo == '':
-        return '''Campo <Strong>{0}</Strong> Ã© de preenchimento obrigatÃ³rio'''.format(nome_campo)
+        return '''Campo <Strong>{0}</Strong> é de preenchimento obrigatório'''.format(nome_campo)
     else:
         return ''
 
@@ -141,26 +141,26 @@ def valida_campo_numerico(valor_campo):
     try:
         inteiro = int(valor_campo.strip())
         if inteiro < 0:
-            return 'O campo valor nÃ£o pode ser negativo'
+            return 'O campo valor não pode ser negativo'
         return ''
     except ValueError:
-        return 'O campo Valor precisa ser um nÃºmero'
+        return 'O campo Valor precisa ser um número'
 
 
 def valida_senhas_iguais(senha1, senha2):
     if senha1 != senha2:
-        return 'Senhas nÃ£o conferem.'
+        return 'Senhas não conferem.'
     return ''
 
 
 def valida_informacoes_bolao(form):
     validacoes = [valida_nome_bolao_ja_existe(form['inputNome']),
-                  valida_campo_preenchido(form['inputResponsavel'], 'ResponsÃ¡vel'),
-                  valida_campo_preenchido(form['inputEmail'], 'Email do ResponsÃ¡vel'),
+                  valida_campo_preenchido(form['inputResponsavel'], 'Responsável'),
+                  valida_campo_preenchido(form['inputEmail'], 'Email do Responsável'),
                   valida_campo_preenchido(form['inputValor'], 'Valor'),
                   valida_campo_numerico(form['inputValor']),
                   valida_campo_preenchido(form['inputSenhaAdmin'], 'Senha do Admin'),
-                  valida_campo_preenchido(form['inputSenhaAdminRepetida'], 'RepetiÃ§Ã£o da senha do Admin'),
+                  valida_campo_preenchido(form['inputSenhaAdminRepetida'], 'Repetição da senha do Admin'),
                   valida_senhas_iguais(form['inputSenhaAdmin'], form['inputSenhaAdminRepetida'])]
     for erro in validacoes:
         if erro > '':
@@ -237,7 +237,7 @@ def inclui_jogo_na_lista_rodadas(lista_rodadas, jogo):
     if not existe_rodada_na_lista:
         jogos = []
         lista_rodadas.append({"numero": rodada_do_jogo,
-                              "nome": '{0}Âª Rodada'.format(rodada_do_jogo),
+                              "nome": '{0}ª Rodada'.format(rodada_do_jogo),
                               "jogos": jogos})
     dto_jogo = monta_dto_jogo(jogo)
     jogos.append(dto_jogo)
