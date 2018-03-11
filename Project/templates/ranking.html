@@ -1,18 +1,33 @@
 {% extends 'menu_base.html' %}
 
 {% block content %}
-<ul class="list-group" style="width: 25rem;">
-<li class="list-group-item list-group-item-dark d-flex justify-content-between align-items-center">
-    <strong>Nome</strong>
-    <span class="badge badge-primary badge-pill"><strong>Pontuação</strong></span>
+
+<table class="table table-striped table-sm text-center" align="center">
+	<thead class="thead-dark">
+    <tr>
+      <th scope="col">#</th>
+	  <th scope="col">Nome</th>
+	  <th scope="col">Pontuação</th>
+	  <th scope="col">Placares Exatos</th>
+	  <th scope="col">Vencedor ou empate</th>
+	  <th scope="col">Gols de um time</th>
+	  <th scope="col"></th>
+    </tr>
+  </thead>
+  <tbody>
 {% for usuario in lista_usuarios -%}
-	<li class="list-group-item d-flex justify-content-between align-items-center{% if not usuario.pago %} list-group-item-danger{% endif %}">
-    <a href="/{{ bolao }}/palpite/{{ usuario.nome }}">{{ usuario.nome }}</a>
-	{% if not usuario.pago %}<small class="text-muted">Não Pago</small>{% endif %}
-    <span class="badge badge-primary badge-pill">{{ usuario.pontuacao }}</span>
-  </li>
+	<tr class="{% if not usuario.pago %} list-group-item-danger{% endif %}">	  
+	  <td scope="row">{{loop.index}}</td>
+	  <td><a href="/{{ bolao }}/palpite/{{ usuario.nome }}"> {{ usuario.nome }}</a></td>
+	  <td>{{ usuario.pontuacao }}</td>
+	  <td>{{ usuario.placar_exato }}</td>
+	  <td>{{ usuario.vencedor_ou_empate }}</td>
+	  <td>{{ usuario.gols_de_um_time }}</td>
+	  <td>{% if not usuario.pago %}<small class="text-muted">Não Pago</small>{% endif %}</td>	   
+	</tr>
 {% endfor %}
-</ul>
+   </tbody>
+</table>
 {% endblock %}
 
 {% set title = 'Ranking' %}

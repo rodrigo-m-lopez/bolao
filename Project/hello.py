@@ -227,10 +227,10 @@ def valida_informacoes_bolao(form):
     return ''
 
 
-def totaliza_pontuacao(id_usuario):
+def totaliza_pontuacao(id_usuario, campo):
     total = 0
     for pontuacao in tbl_pontuacao.find({'usuario': id_usuario}):
-        total = total + pontuacao["pontos"]
+        total = total + pontuacao[campo]
     return total
 
 
@@ -238,11 +238,18 @@ def monta_dto_usuarios(bolao):
     lista_retorno = []
     id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
     for usuario in tbl_usuario.find({'bolao': id_bolao}):
-        pontuacao_usuario = totaliza_pontuacao(str(usuario["_id"]))
+        pontuacao_usuario = totaliza_pontuacao(str(usuario["_id"]), 'pontos')
+        placares_exatos_usuario = totaliza_pontuacao(str(usuario["_id"]), 'placar_exato')
+        vencedor_ou_empate_usuario = totaliza_pontuacao(str(usuario["_id"]), 'vencedor_ou_empate')
+        gols_de_um_time_usuario =totaliza_pontuacao(str(usuario["_id"]), 'gols_de_um_time')
         lista_retorno.append({"nome": usuario["nome"],
                               "pontuacao": pontuacao_usuario,
+                              "placar_exato": placares_exatos_usuario,
+                              "vencedor_ou_empate": vencedor_ou_empate_usuario,
+                              "gols_de_um_time": gols_de_um_time_usuario,
                               "pago": usuario["pago"]})
-    return sorted(lista_retorno, key=itemgetter('pontuacao'), reverse=True)
+    return sorted(lista_retorno, key=itemgetter('pontuacao', 'placar_exato', 'vencedor_ou_empate', 'gols_de_um_time'),
+                  reverse=True)
 
 
 def insere_pontuacoes(usuario):
@@ -251,7 +258,10 @@ def insere_pontuacoes(usuario):
         id_usuario = str(usuario)
         tbl_pontuacao.insert_one({'usuario': id_usuario,
                                   'jogo': id_jogo,
-                                  'pontos': 0})
+                                  'pontos': 0,
+                                  'placar_exato': 0,
+                                  'vencedor_ou_empate': 0,
+                                  'gols_de_um_time': 0})
 
 
 def insere_palpites(usuario, form):
