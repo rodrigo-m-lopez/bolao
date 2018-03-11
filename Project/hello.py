@@ -8,6 +8,7 @@ from pymongo import MongoClient
 from operator import itemgetter
 import uuid
 import hashlib
+from bson import ObjectId
 
 client = MongoClient()
 db = client.dev
@@ -38,10 +39,12 @@ def novo_bolao():
         cria_bolao(request.form)
         return lista_bolao()
 
+
 @app.route('/lista_bolao')
 def lista_bolao():
     boloes = monta_dto_boloes()
     return render_template('lista_bolao.html', lista_boloes=boloes)
+
 
 @app.route('/<bolao>/aposta', methods=['GET', 'POST'])
 def aposta(bolao):
@@ -76,6 +79,7 @@ def admin(bolao):
     else:
         pass
 
+
 @app.route('/valida_nome_bolao', methods=['POST'])
 def valida_nome_bolao():
     nome_bolao = request.form['nome_bolao']
@@ -105,13 +109,69 @@ def toggle_pago(bolao):
                            {"$set": {"pago": novo_pago}})
     return 'on' if novo_pago else 'off'
 
+
+@app.route('/<bolao>/palpite/<nome_usuario>')
+def palpite(bolao, nome_usuario):
+    id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
+    usuario = tbl_usuario.find_one({'nome': nome_usuario, 'bolao': id_bolao})
+    monta_dto_grupos()
+    jogos = todos_jogos
+    palpites = monta_palpites(usuario)
+    pontuacoes = monta_pontuacoes(usuario)
+    lista_jogos_ordem_tela = []
+    placares = monta_placares(lista_jogos_ordem_tela)
+
+    return render_template('palpites.html', bolao=bolao, jogos=lista_jogos_ordem_tela, palpites=palpites,
+                           pontuacoes=pontuacoes, placares=placares, nome_usuario=nome_usuario)
+
+
+def monta_placares(lista_jogos_ordem_tela):
+    placares = {}
+    lista_sem_resultados = []
+    lista_com_resultados = []
+    for jogo in todos_jogos:
+        id_jogo = ObjectId(jogo['_id'])
+        jogo_banco = tbl_jogo.find_one({'_id': id_jogo})
+        lista = lista_sem_resultados if jogo_banco['gols_mandante'] is None else lista_com_resultados
+        lista.append(jogo)
+        gols_mandante = '-' if jogo_banco['gols_mandante'] is None else jogo_banco['gols_mandante']
+        gols_visitante = '-' if jogo_banco['gols_visitante'] is None else jogo_banco['gols_visitante']
+        placares[jogo['nome']] = '{} x {}'.format(gols_mandante, gols_visitante)
+
+    lista_com_resultados.sort(key=itemgetter('date_time'), reverse=True)
+    lista_sem_resultados.sort(key=itemgetter('date_time'), reverse=False)
+    lista_com_resultados.extend(lista_sem_resultados)
+    lista_jogos_ordem_tela.extend(lista_com_resultados)
+    return placares
+
+
+def monta_pontuacoes(usuario):
+    pontuacoes = {}
+    for jogo in todos_jogos:
+        pontuacao_jogo = tbl_pontuacao.find_one({'usuario': str(usuario['_id']),
+                                                 'jogo': str(jogo['_id'])})
+        pontuacoes[jogo['nome']] = pontuacao_jogo['pontos']
+    return pontuacoes
+
+
+def monta_palpites(usuario):
+    palpites = {}
+    for jogo in todos_jogos:
+        palpite_jogo = tbl_palpite.find_one({'usuario': str(usuario['_id']),
+                                             'jogo': str(jogo['_id'])})
+        palpites[jogo['nome']] = '{} x {}'.format(palpite_jogo['gols_mandante'], palpite_jogo['gols_visitante'])
+    return palpites
+
+
 def hash_password(password):
     salt = uuid.uuid4().hex
     return hashlib.sha256(salt.encode() + password.encode()).hexdigest() + ':' + salt
 
+
 def check_password(hashed_password, user_password):
     password, salt = hashed_password.split(':')
     return password == hashlib.sha256(salt.encode() + user_password.encode()).hexdigest()
+
 
 def cria_bolao(form):
     tbl_bolao.insert_one({'nome': form['inputNome'],
@@ -120,7 +180,6 @@ def cria_bolao(form):
                           'valor': int(form['inputValor']),
                           'senhaAdmin': hash_password(form['inputSenhaAdmin']),
                           'descricao': form['inputDescricao']})
-
 
 
 def valida_nome_bolao_ja_existe(nome_bolao):
@@ -167,11 +226,13 @@ def valida_informacoes_bolao(form):
             return erro
     return ''
 
+
 def totaliza_pontuacao(id_usuario):
     total = 0
     for pontuacao in tbl_pontuacao.find({'usuario': id_usuario}):
         total = total + pontuacao["pontos"]
     return total
+
 
 def monta_dto_usuarios(bolao):
     lista_retorno = []
@@ -221,6 +282,7 @@ def monta_dto_jogo(jogo):
             "id_input_mandante": 'm{0}'.format(str(jogo["_id"])),
             "id_input_visitante": 'v{0}'.format(str(jogo["_id"])),
             "data": jogo["data"].strftime('%d/%m %H:%M'),
+            "date_time": jogo["data"],
             "local": jogo["local"]}
 
 
@@ -250,10 +312,12 @@ def monta_dto_boloes():
         dto_boloes.append({'nome': bolao['nome']})
     return dto_boloes
 
+
 def monta_dto_grupos():
     if not grupos:
         # for jogo in tbl_jogo.find({'grupo': 'Grupo A', 'rodada': 1}):  # para testar com menos jogos
-        for jogo in tbl_jogo.find().sort([("grupo", pymongo.ASCENDING), ("rodada", pymongo.ASCENDING), ("data", pymongo.ASCENDING)]):
+        for jogo in tbl_jogo.find().sort(
+                [("grupo", pymongo.ASCENDING), ("rodada", pymongo.ASCENDING), ("data", pymongo.ASCENDING)]):
             nome_grupo = jogo["grupo"]
             if nome_grupo not in grupos.keys():
                 grupos[nome_grupo] = {"nome": nome_grupo,
@@ -265,4 +329,4 @@ def monta_dto_grupos():
 
 
 if __name__ == '__main__':
-    app.run(debug=True,host='0.0.0.0', port=80)
+    app.run(debug=True, host='0.0.0.0', port=80)
