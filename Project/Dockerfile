@@ -15,7 +15,12 @@ ENTRYPOINT [ "python" ]
 
 CMD [ "hello.py" ]
 
-
+# 
+# cd <bolao>/Project
+# Verify if docker is installed with: 
+# docker ps
+#
+#
 # build with:
 # docker build -t bolao_flask_image .
 #
