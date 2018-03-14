@@ -6,10 +6,12 @@ RUN mkdir /app
 
 WORKDIR /app
 
-# We copy just the requirements.txt first to leverage Docker cache
+# TODO: Use git to download code from master branch
 COPY . .
 
 RUN pip install -r requirements.txt
+
+# TODO: Rodar o crawler ja na inicializacao
 
 ENTRYPOINT [ "python" ]
 
