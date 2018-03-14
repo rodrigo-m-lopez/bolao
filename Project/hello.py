@@ -10,7 +10,15 @@ import uuid
 import hashlib
 from bson import ObjectId
 
-client = MongoClient()
+client = None
+try:
+    # if prod env
+    #'mongodb://user:pass@server:port/database'
+    client = MongoClient('mongodb://bolao_user:bolao_pass@db_container:27017/admin')
+except:
+    # if dev environment
+    client = MongoClient()
+
 db = client.dev
 tbl_jogo = db.jogo
 tbl_selecao = db.selecao
