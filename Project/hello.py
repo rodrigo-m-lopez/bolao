@@ -36,10 +36,12 @@ def novo_bolao():
         cria_bolao(request.form)
         return lista_bolao()
 
+
 @app.route('/lista_bolao')
 def lista_bolao():
     boloes = monta_dto_boloes()
     return render_template('lista_bolao.html', lista_boloes=boloes)
+
 
 @app.route('/<bolao>/aposta', methods=['GET', 'POST'])
 def aposta(bolao):
@@ -74,6 +76,7 @@ def admin(bolao):
     else:
         pass
 
+
 @app.route('/valida_nome_bolao', methods=['POST'])
 def valida_nome_bolao():
     nome_bolao = request.form['nome_bolao']
@@ -103,13 +106,16 @@ def toggle_pago(bolao):
                            {"$set": {"pago": novo_pago}})
     return 'on' if novo_pago else 'off'
 
+
 def hash_password(password):
     salt = uuid.uuid4().hex
     return hashlib.sha256(salt.encode() + password.encode()).hexdigest() + ':' + salt
 
+
 def check_password(hashed_password, user_password):
     password, salt = hashed_password.split(':')
     return password == hashlib.sha256(salt.encode() + user_password.encode()).hexdigest()
+
 
 def cria_bolao(form):
     tbl_bolao.insert_one({'nome': form['inputNome'],
@@ -164,11 +170,13 @@ def valida_informacoes_bolao(form):
             return erro
     return ''
 
+
 def totaliza_pontuacao(id_usuario):
     total = 0
     for pontuacao in tbl_pontuacao.find({'usuario': id_usuario}):
         total = total + pontuacao["pontos"]
     return total
+
 
 def monta_dto_usuarios(bolao):
     lista_retorno = []
@@ -247,10 +255,12 @@ def monta_dto_boloes():
         dto_boloes.append({'nome': bolao['nome']})
     return dto_boloes
 
+
 def monta_dto_grupos():
     if not grupos:
         # for jogo in tbl_jogo.find({'grupo': 'Grupo A', 'rodada': 1}):  # para testar com menos jogos
-        for jogo in tbl_jogo.find().sort([("grupo", pymongo.ASCENDING), ("rodada", pymongo.ASCENDING), ("data", pymongo.ASCENDING)]):
+        for jogo in tbl_jogo.find().sort(
+                [("grupo", pymongo.ASCENDING), ("rodada", pymongo.ASCENDING), ("data", pymongo.ASCENDING)]):
             nome_grupo = jogo["grupo"]
             if nome_grupo not in grupos.keys():
                 grupos[nome_grupo] = {"nome": nome_grupo,
