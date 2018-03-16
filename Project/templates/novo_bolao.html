@@ -2,11 +2,11 @@
 
 {% block content %}
 
-<form method="POST" action="/novo_bolao" data-toggle="validator">
+<form method="POST" action="/novo_bolao" data-toggle="validator" role ="form">
 <div class="form-group" >
 	<input type="text" class="form-control" onblur="validaNomeBolao()" style="width: 52rem;" name="inputNome" id="inputNome" placeholder="Nome" required>
 	<div class="help-block with-errors text-danger"></div>
-	<div id="divErro"/>
+	<div id="divErro"></div>
 </div>
 
 <div class="form-group" >
@@ -18,15 +18,18 @@
 	<div class="help-block with-errors text-danger"></div>
 </div>
 
-<div class="input-group mb-3" style="width: 52rem;">
-  <div class="input-group-prepend">
-	<span class="input-group-text">R$</span>
-  </div>
-  <input type="number" min="0" step="5" class="form-control"  name="inputValor" id="inputValor" placeholder="Valor" required>
-  <div class="input-group-append">
-	<span class="input-group-text">,00</span>
-  </div>  
-  <div class="help-block with-errors text-danger"></div>
+<div class="form-group">
+	<div class="input-group" style="width: 52rem;">
+	  <div class="input-group-prepend">
+		<span class="input-group-text">R$</span>
+	  </div>
+	  <input type="number" min="0" step="5" class="form-control"  name="inputValor" id="inputValor" placeholder="Valor" required>
+	  
+	  <div class="input-group-append">
+		<span class="input-group-text">,00</span>
+	  </div>
+	</div>
+	<div class="help-block with-errors text-danger"></div>
 </div>
 
 <div class="form-group">
