@@ -61,9 +61,7 @@ python GloboEsporteCrawler.py
 cd (...)\bolao
 venv/Scripts/activate
 cd Project
-set FLASK_APP=hello.py
-set FLASK_DEBUG=1
-flask run
+sudo python3 hello.py
 ```
 
 # Configurando na amazon:
@@ -72,6 +70,14 @@ flask run
 sudo yum clean all
 sudo yum update
 sudo yum install python36 python36-virtualenv python36-pip
+
+
+sudo yum install -y docker
+sudo usermod -a -G docker ec2-user
+sudo curl -L https://github.com/docker/compose/releases/download/1.19.0/docker-compose-`uname -s`-`uname -m` | sudo tee /usr/local/bin/docker-compose > /dev/null
+sudo chmod +x /usr/local/bin/docker-compose
+sudo service docker start
+sudo chkconfig docker on
 ```
 
 eu copiei via ssh da minha máquna local a pasta bolao para ~/bolao, depois disso:
@@ -83,4 +89,6 @@ python3.6 -m venv venv
 cd Project/
 pip install -r requirements.txt
 ```
+
+
 

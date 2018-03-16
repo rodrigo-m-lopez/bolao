@@ -8,6 +8,7 @@ import pathlib
 from bson import ObjectId
 import argparse
 
+
 class Crawler:
 
     def __init__(self, teste):
@@ -40,7 +41,6 @@ class Crawler:
             print(text)
         return BeautifulSoup(text, "html.parser")
 
-
     def monta_selecao(self, span_informacoes):
         sigla = span_informacoes.find('span', {'class': 'placar-jogo-equipes-sigla'}).text.strip()
         selecao_banco = self.tbl_selecao.find_one({"sigla": sigla})
@@ -56,28 +56,29 @@ class Crawler:
                     "grupo": self.nome_grupo}
             return self.tbl_selecao.insert_one(time).inserted_id
 
-
-    def resultado(self,gols_mandante, gols_visitante):
+    def resultado(self, gols_mandante, gols_visitante):
         # se mandante ganha retorna 1, empate 0, visitante -1
         return (gols_mandante > gols_visitante) - (gols_mandante < gols_visitante)
 
-
-    def calcula_pontuacao(self,mandante_real, visitante_real, mandante_palpite, visitante_palpite):
+    def calcula_pontuacao(self, mandante_real, visitante_real, mandante_palpite, visitante_palpite):
+        (exato, resultado, gols_um_time) = (False, False, False)
         if mandante_real is None or visitante_real is None:
-            return 0
+            return 0, exato, resultado, gols_um_time
 
         if mandante_real == mandante_palpite and visitante_real == visitante_palpite:
-            return PONTUACAO_PLACAR_EXATO
+            exato = True
+            return PONTUACAO_PLACAR_EXATO, exato, resultado, gols_um_time
 
         pontuacao = 0
         if self.resultado(mandante_real, visitante_real) == self.resultado(mandante_palpite, visitante_palpite):
+            resultado = True
             pontuacao = pontuacao + PONTUACAO_VENCEDOR_OU_EMPATE
 
         if mandante_real == mandante_palpite or visitante_real == visitante_palpite:
+            gols_um_time = True
             pontuacao = pontuacao + PONTUACAO_GOLS_DE_UM_TIME
 
-        return pontuacao
-
+        return pontuacao, exato, resultado, gols_um_time
 
     def calcula_pontos_usuarios(self, id_jogo, gols_mandante_real, gols_visitante_real):
         for palpite in self.tbl_palpite.find({'jogo': id_jogo}):
@@ -87,13 +88,17 @@ class Crawler:
             nome_usuario = usuario_banco['nome']
             gols_mandante_palpite = palpite['gols_mandante']
             gols_visitante_palpite = palpite['gols_visitante']
-            pontos = self.calcula_pontuacao(gols_mandante_real, gols_visitante_real, gols_mandante_palpite,
-                                       gols_visitante_palpite)
-            print('\tPalpite {3} {1} x {2} : {0} pontos'.format(pontos, gols_mandante_palpite, gols_visitante_palpite, nome_usuario))
+            pontos, exato, resultado, gols_um_time = self.calcula_pontuacao(gols_mandante_real, gols_visitante_real,
+                                                                            gols_mandante_palpite,
+                                                                            gols_visitante_palpite)
+            print('\tPalpite {3} {1} x {2} : {0} pontos'.format(pontos, gols_mandante_palpite, gols_visitante_palpite,
+                                                                nome_usuario))
             if jogo_pago:
                 self.tbl_pontuacao.update_one({'usuario': usuario, 'jogo': id_jogo},
-                                         {"$set": {"pontos": pontos}})
-
+                                              {"$set": {'pontos': pontos,
+                                                        'placar_exato': int(exato),
+                                                        'vencedor_ou_empate': int(resultado),
+                                                        'gols_de_um_time': int(gols_um_time)}})
 
     def cria_arquivo(self, caminho, conteudo):
         diretorio = os.path.dirname(caminho)
@@ -101,13 +106,11 @@ class Crawler:
         with open(caminho, "w+") as f:
             f.write(conteudo)
 
-
     def txt_to_int(self, text):
         try:
             return int(text.strip())
         except ValueError:
             return None
-
 
     def monta_jogo(self):
         jogo = self.jogo
@@ -141,13 +144,12 @@ class Crawler:
         elif gols_mandante != gols_mandante_banco or gols_visitante != gols_visitante_banco:
             id_jogo = str(jogo_banco['_id'])
             self.tbl_jogo.update_one({"nome": nome_jogo},
-                                {"$set": {"gols_mandante": gols_mandante,
-                                          "gols_visitante": gols_visitante}})
+                                     {"$set": {"gols_mandante": gols_mandante,
+                                               "gols_visitante": gols_visitante}})
             print('Alteração de placar: {0} de {1} x {2} para {3} x {4}'.format(nome_jogo, gols_mandante_banco,
                                                                                 gols_visitante_banco, gols_mandante,
                                                                                 gols_visitante))
             self.calcula_pontos_usuarios(id_jogo, gols_mandante, gols_visitante)
-
 
     def executa(self):
         for secao_grupo in self.pagina.find_all('section', {'class': 'section-container'}):
@@ -163,11 +165,14 @@ class Crawler:
                 pagina_rodada = self.get_soup(url_rodada)
 
                 for self.jogo in pagina_rodada.find_all('div', {'class': 'placar-jogo'}):
-                    mandante = self.jogo.find('span', {'class': 'placar-jogo-equipes-item placar-jogo-equipes-mandante'})
-                    visitante = self.jogo.find('span', {'class': 'placar-jogo-equipes-item placar-jogo-equipes-visitante'})
+                    mandante = self.jogo.find('span',
+                                              {'class': 'placar-jogo-equipes-item placar-jogo-equipes-mandante'})
+                    visitante = self.jogo.find('span',
+                                               {'class': 'placar-jogo-equipes-item placar-jogo-equipes-visitante'})
                     self.id_mandante = self.monta_selecao(mandante)
                     self.id_visitante = self.monta_selecao(visitante)
                     self.monta_jogo()
+
 
 modo_teste = False
 
@@ -181,7 +186,3 @@ if __name__ == "__main__":
     args = parser.parse_args()
     modo_teste = args.test
     Crawler(modo_teste).executa()
-
-
-
-

@@ -1,0 +1,3 @@
+sudo netstat -tulpn | grep :80
+
+sudo python3 hello.py
