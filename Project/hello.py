@@ -80,10 +80,8 @@ def admin(bolao):
     else:
         input_senha_admin = request.form['senhaAdmin']
         hashed_password = tbl_bolao.find_one({'nome': bolao})['senhaAdmin']
-        _, salt = hashed_password.split(':')
-        hashed_input = hash_password(input_senha_admin, salt)
 
-        if hashed_input == hashed_password:
+        if check_password(hashed_password, input_senha_admin):
             lista_usuarios = monta_dto_usuarios(bolao)
             return render_template('admin.html', bolao=bolao, lista_usuarios=lista_usuarios)
         else:

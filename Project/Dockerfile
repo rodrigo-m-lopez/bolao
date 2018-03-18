@@ -2,20 +2,17 @@ FROM python:3
 
 MAINTAINER Rodrigo & Colodas "bolaodagalera@gmail.com"
 
-RUN mkdir /app
+RUN mkdir /Project
 
-WORKDIR /app
+RUN pip install -r Project/requirements.txt
 
-# TODO: Use git to download code from master branch
-COPY . .
-
-RUN pip install -r requirements.txt
+COPY . ./Project
 
 # TODO: Rodar o crawler ja na inicializacao
 
 ENTRYPOINT [ "python" ]
 
-CMD [ "hello.py" ]
+CMD [ "Project/hello.py" ]
 
 # 
 # cd <bolao>/Project
