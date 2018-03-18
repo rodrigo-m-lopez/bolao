@@ -9,7 +9,7 @@ import uuid
 import hashlib
 from bson import ObjectId
 
-import Project.db_config as db_config
+from .db_config import db_config
 client = db_config.get_db_client()
 
 db = client.dev
