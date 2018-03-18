@@ -4,20 +4,13 @@ import pymongo
 from flask import Flask
 from flask import request
 from flask import render_template
-from pymongo import MongoClient
 from operator import itemgetter
 import uuid
 import hashlib
 from bson import ObjectId
 
-client = None
-try:
-    # if prod env
-    #'mongodb://user:pass@server:port/database'
-    client = MongoClient('mongodb://bolao_user:bolao_pass@db_container:27017/admin')
-except:
-    # if dev environment
-    client = MongoClient()
+import Project.db_config as db_config
+client = db_config.get_db_client()
 
 db = client.dev
 tbl_jogo = db.jogo
@@ -29,6 +22,7 @@ tbl_pontuacao = db.pontuacao
 app = Flask(__name__)
 grupos = {}
 todos_jogos = []
+
 
 
 @app.route('/')
@@ -82,11 +76,18 @@ def ranking(bolao):
 @app.route('/<bolao>/admin', methods=['GET', 'POST'])
 def admin(bolao):
     if request.method == 'GET':
-        lista_usuarios = monta_dto_usuarios(bolao)
-        return render_template('admin.html', bolao=bolao, lista_usuarios=lista_usuarios)
+        return render_template('valida_admin_bolao.html', bolao=bolao)
     else:
-        pass
+        input_senha_admin = request.form['senhaAdmin']
+        hashed_password = tbl_bolao.find_one({'nome': bolao})['senhaAdmin']
+        _, salt = hashed_password.split(':')
+        hashed_input = hash_password(input_senha_admin, salt)
 
+        if hashed_input == hashed_password:
+            lista_usuarios = monta_dto_usuarios(bolao)
+            return render_template('admin.html', bolao=bolao, lista_usuarios=lista_usuarios)
+        else:
+            return render_template('valida_admin_bolao.html', bolao=bolao, erro='Senha Invalida')
 
 @app.route('/valida_nome_bolao', methods=['POST'])
 def valida_nome_bolao():
@@ -171,8 +172,9 @@ def monta_palpites(usuario):
     return palpites
 
 
-def hash_password(password):
-    salt = uuid.uuid4().hex
+def hash_password(password, salt=None):
+    if salt is None:
+        salt = uuid.uuid4().hex
     return hashlib.sha256(salt.encode() + password.encode()).hexdigest() + ':' + salt
 
 

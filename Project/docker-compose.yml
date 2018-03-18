@@ -7,6 +7,8 @@ services:
     - "80:80"
     links:
     - db_container
+    depends_on:
+      - db_container
   db_container:
     image: mongo
     restart: always
@@ -14,8 +16,8 @@ services:
     - MONGO_DATA_DIR=/data/db
     - MONGO_INITDB_ROOT_USERNAME=bolao_user
     - MONGO_INITDB_ROOT_PASSWORD=bolao_pass
-    ports:
-    - "27017:27017"
+    expose:
+    - "27017"
     volumes:
     - /home/ec2-user/bolao/db:/data/db
 
