@@ -1,10 +1,10 @@
-{% extends 'menu_gerencia_bolao.html' %}
+{% extends 'menu_base.html' %}
 
 {% block content %}
 
 <form method="POST" action="/{{ bolao }}/admin" data-toggle="validator">
 	<div class="form-group" >
-		<input type="text" class="form-control" style="width: 52rem;" name="senhaAdmin" id="senhaAdmin" placeholder="Insira a senha de admin..." required>
+		<input type="password" class="form-control" style="width: 52rem;" name="senhaAdmin" id="senhaAdmin" placeholder="Insira a senha de admin..." required>
 		<div class="help-block with-errors text-danger"></div>
 		<div id="divErro"></div>
 	</div>
@@ -43,4 +43,4 @@
 </script>	
 {% endblock %}
 
-{% set title = 'Admin Bolão' %}
+{% set title = 'Admin' %}
