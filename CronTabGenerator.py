@@ -19,16 +19,15 @@ for jogo in tbl_jogo.find():
     dia = datetime_jogo.day
     hora = datetime_jogo.hour
 
-    if dia not in horarios:
-        horarios[dia] = []
+    if hora not in horarios:
+        horarios[hora] = []
 
-    if hora not in horarios[dia]:
-        horarios[dia].append(hora)
+    if dia not in horarios[hora]:
+        horarios[hora].append(dia)
 
 horarios = collections.OrderedDict(sorted(horarios.items()))
 
-for dia in horarios:
-    horarios[dia] = sorted(horarios[dia])
-    for hora in horarios[dia]:
-        print(FORMATO_COMANDO.format(hora, hora+2, dia))
+for hora in horarios:
+    horarios[hora] = sorted(horarios[hora])
+    print(FORMATO_COMANDO.format(hora, hora+2, ','.join([str(hora) for hora in horarios[hora]])))
 
