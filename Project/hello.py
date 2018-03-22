@@ -1,5 +1,9 @@
 # coding: latin-1
 
+import sys
+import os
+sys.path.append(os.path.abspath('../../bolao'))
+
 import pymongo
 from flask import Flask
 from flask import request
@@ -9,8 +13,8 @@ import uuid
 import hashlib
 from bson import ObjectId
 
-from .db_config import db_config
-client = db_config.get_db_client()
+from Project.db_config import get_db_client
+client = get_db_client()
 
 db = client.dev
 tbl_jogo = db.jogo
@@ -347,4 +351,4 @@ def monta_dto_grupos():
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=80)
+    app.run(debug=True, host='127.0.0.1', port=80)

@@ -24,7 +24,7 @@ services:
     
 # run this compose with:
 # 
-# cd /home/ec2-user/bolao/Project	
+# cd /home/ec2-user/bolao/src
 # docker-compose up -d
 #
 #
