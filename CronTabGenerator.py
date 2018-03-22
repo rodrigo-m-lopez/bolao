@@ -13,6 +13,9 @@ horarios = {}
 
 FORMATO_COMANDO = '* {}-{} {} 6 * python GloboEsporteCrawler.py'
 
+#TODO: rodrigo - Olhar esquema do timezone... Lembrar que o servidor esta rodando nos estados unidos
+# ver https://github.com/tupy/bolao/blob/master/Dockerfile    como referencia
+
 for jogo in tbl_jogo.find():
     datetime_jogo = jogo['data']
 
@@ -29,5 +32,6 @@ horarios = collections.OrderedDict(sorted(horarios.items()))
 
 for hora in horarios:
     horarios[hora] = sorted(horarios[hora])
+    # TODO: rodrigo: imprimir para arquivo crontab/cron_crawler
     print(FORMATO_COMANDO.format(hora, hora+2, ','.join([str(hora) for hora in horarios[hora]])))
 
