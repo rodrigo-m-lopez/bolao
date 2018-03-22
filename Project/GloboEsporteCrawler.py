@@ -1,4 +1,8 @@
-from pymongo import MongoClient
+import sys
+import os
+sys.path.append(os.path.abspath('../../bolao'))
+
+from Project.db_config import get_db_client
 import requests
 import re
 from bs4 import BeautifulSoup
@@ -8,14 +12,13 @@ import pathlib
 from bson import ObjectId
 import argparse
 
-
 class Crawler:
 
     def __init__(self, teste):
         self.teste = teste
         self.pattern_hora = re.compile(r'\d{2}:\d{2}')
 
-        client = MongoClient()
+        client = get_db_client()
         db = client.dev
 
         self.tbl_selecao = db.selecao
@@ -172,7 +175,6 @@ class Crawler:
                     self.id_mandante = self.monta_selecao(mandante)
                     self.id_visitante = self.monta_selecao(visitante)
                     self.monta_jogo()
-
 
 modo_teste = False
 
