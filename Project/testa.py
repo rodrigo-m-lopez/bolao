@@ -5,6 +5,10 @@ from bs4 import BeautifulSoup
 import os
 import GloboEsporteCrawler
 
+
+# TODO: rodrigo:  O ideal seria colocar a pasta teste_crawler fora da pasta project... Quando copia para o docker demora muito
+
+
 encoding = 'latin-1'
 def get_soup(url, prints=False):
     with open(url, 'r', encoding=encoding) as myfile:

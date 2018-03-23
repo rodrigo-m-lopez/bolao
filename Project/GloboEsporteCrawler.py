@@ -12,6 +12,8 @@ import pathlib
 from bson import ObjectId
 import argparse
 
+# TODO: rodrigo - criar um log em arquivo so para garantir que o crawler foi executado
+
 class Crawler:
 
     def __init__(self, teste):
