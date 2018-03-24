@@ -163,8 +163,8 @@ class Crawler:
                 'data-url-pattern-navegador-jogos']
             numero_rodadas = 3
             for i in range(numero_rodadas):
-                rodada = i + 1
-                self.url_relativa_rodada = url_base_rodadas + str(rodada) + '/jogos.html'
+                self.rodada = i + 1
+                self.url_relativa_rodada = url_base_rodadas + str(self.rodada) + '/jogos.html'
                 url_rodada = self.url_base + self.url_relativa_rodada
 
                 pagina_rodada = self.get_soup(url_rodada)
