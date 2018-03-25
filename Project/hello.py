@@ -59,6 +59,8 @@ def aposta(bolao):
     if request.method == 'GET':
         return render_template('aposta.html', grupos=grupos, bolao=bolao)
     else:
+
+        #TODO: rodrigo : Bloquear apostas se a Copa ja iniciou
         if not usuario_ja_existe(request.form['inputNome'], id_bolao):
             id_usuario = tbl_usuario.insert_one({'nome': request.form['inputNome'],
                                                  'email': request.form['inputEmail'],
