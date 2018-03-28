@@ -11,7 +11,6 @@ import os
 import pathlib
 from bson import ObjectId
 import argparse
-import datetime
 
 
 class Crawler:
@@ -185,18 +184,9 @@ PONTUACAO_VENCEDOR_OU_EMPATE = 9
 PONTUACAO_GOLS_DE_UM_TIME = 3
 
 
-def log(message):
-    try:
-        with open('/var/log/cron.log', 'a') as file:
-            file.write(message)
-    except:
-        pass
-
 if __name__ == "__main__":
-    log('Starting crawler cron job at : ' + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     parser = argparse.ArgumentParser()
     parser.add_argument("--test", help="Modo Teste, verifica em pastas locais por resultados", action='store_true')
     args = parser.parse_args()
     modo_teste = args.test
     Crawler(modo_teste).executa()
-    log('Ending crawler cron job at : ' + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
