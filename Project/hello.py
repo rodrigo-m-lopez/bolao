@@ -29,8 +29,6 @@ app = Flask(__name__)
 grupos = {}
 todos_jogos = []
 
-
-
 @app.route('/')
 def inicio():
     return intro()
