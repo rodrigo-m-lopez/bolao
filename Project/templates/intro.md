@@ -1,6 +1,4 @@
-
-# Bem Vindo ao Bolao da Copa da Russia 2018!  
-  
+# Bem Vindo ao Bolao da Copa da Russia 2018!
 
   
 ##  Regulamento
@@ -53,11 +51,14 @@ Uma vez com o pagamento registrado, voce esta participando do bolao
 #### E gratuito mesmo? Tem pegadinha?
 Sim, nao.
 
+#### Sou atleticano ou corintiano. Posso apostar?
+Infelizmente sim.
+
 #### Existe suporte?
 Nao
 
 #### Qual o email de contato?
 Rodrigo e Guilherme
+
 bolaodagalera2018@gmail.com
 
-  

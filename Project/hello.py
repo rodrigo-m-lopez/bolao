@@ -47,7 +47,13 @@ def novo_bolao():
 
 @app.route('/intro')
 def intro():
-    return render_template('intro.html')
+    import markdown
+    input_md = 'templates/intro.md'
+    fh = open(input_md, 'r')
+    md = fh.read()
+    extensions = ['extra', 'smarty']
+    html = markdown.markdown(md, extensions=extensions, output_format='html5', encoding='latin-1')
+    return render_template('intro.html', content=html)
 
 @app.route('/lista_bolao')
 def lista_bolao():
@@ -62,8 +68,6 @@ def aposta(bolao):
     if request.method == 'GET':
         return render_template('aposta.html', grupos=grupos, bolao=bolao)
     else:
-
-        #TODO: rodrigo : Bloquear apostas se a Copa ja iniciou
         if not usuario_ja_existe(request.form['inputNome'], id_bolao):
             id_usuario = tbl_usuario.insert_one({'nome': request.form['inputNome'],
                                                  'email': request.form['inputEmail'],
