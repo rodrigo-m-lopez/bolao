@@ -47,13 +47,7 @@ def novo_bolao():
 
 @app.route('/intro')
 def intro():
-    import markdown
-    input_md = 'templates/intro.md'
-    fh = open(input_md, 'r')
-    md = fh.read()
-    extensions = ['extra', 'smarty']
-    html = markdown.markdown(md, extensions=extensions, output_format='html5', encoding='latin-1')
-    return render_template('intro.html', content=html)
+    return render_template('intro.html')
 
 @app.route('/lista_bolao')
 def lista_bolao():
