@@ -26,8 +26,6 @@ COPY . .
 # Give execution rights on the cron job
 RUN chmod 0644 crawler_cron
 
-RUN touch /var/log/cron.log
-
 RUN chmod 755 ./start.sh
 
 CMD ["./start.sh"]

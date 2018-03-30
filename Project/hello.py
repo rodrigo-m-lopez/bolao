@@ -23,15 +23,15 @@ tbl_usuario = db.usuario
 tbl_bolao = db.bolao
 tbl_palpite = db.palpite
 tbl_pontuacao = db.pontuacao
+
 app = Flask(__name__)
+
 grupos = {}
 todos_jogos = []
 
-
-
 @app.route('/')
 def inicio():
-    return lista_bolao()
+    return intro()
 
 
 @app.route('/novo_bolao', methods=['GET', 'POST'])
@@ -45,6 +45,9 @@ def novo_bolao():
         cria_bolao(request.form)
         return lista_bolao()
 
+@app.route('/intro')
+def intro():
+    return render_template('intro.html')
 
 @app.route('/lista_bolao')
 def lista_bolao():
@@ -59,8 +62,6 @@ def aposta(bolao):
     if request.method == 'GET':
         return render_template('aposta.html', grupos=grupos, bolao=bolao)
     else:
-
-        #TODO: rodrigo : Bloquear apostas se a Copa ja iniciou
         if not usuario_ja_existe(request.form['inputNome'], id_bolao):
             id_usuario = tbl_usuario.insert_one({'nome': request.form['inputNome'],
                                                  'email': request.form['inputEmail'],
