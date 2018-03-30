@@ -1,0 +1,106 @@
+﻿{% extends 'menu_gerencia_bolao.html' %}
+{% block content %}
+
+<div class="container" style="background: white; border-radius: 50px; padding-left: 50px; padding-right: 50px; padding-top: 15px; padding-bottom: 15px;">
+
+    <img style="margin: auto; display: block;" width="250px" src="{{url_for('static', filename='logo_alta_transparent.png')}}" />
+    <h2 id="regulamento">Regulamento</h2>
+    <ol>
+        <p>1 - Cada participante deverá definir seus palpites, apostar nos 48 jogos da primeira fase da copa da Rússia 2018</p>
+        <p>2 - Pontuação
+            <ul class="list-group">
+                <li class="list-group-item">Acertar placar exato do jogo: 18 pontos<br></li>
+                <li class="list-group-item">Acertar o time vencedor ou empate: 9 pontos<br></li>
+                <li class="list-group-item">Acertar o número de gols de uma das equipes: 3 pontos <br></li>
+            </ul>
+        </p>
+
+        <p>3 - Críterios de desempate
+            <ul class="list-group">
+                <li class="list-group-item">Maior quantidade de acertos de placares exatos dos jogos <br></li>
+                <li class="list-group-item">Maior quantidade de acertos do time vencedor ou empate dos jogos <br></li>
+                <li class="list-group-item">Maior quantidade de acertos no número de gols da equipe vencedora <br></li>
+                <li class="list-group-item">Maior quantidade de acertos no número de gols da equipe perdedora <br></li>
+            </ul>
+        </p>
+    </ol>
+
+
+    <p><strong>Exemplos</strong>:</p>
+    <p><strong>Placar Apostado : Brasil 3 x 1 Argentina</strong>:</p>
+    <table class="table">
+        <thead>
+            <tr>
+                <th scope="col">Placar Real</th>
+                <th scope="col">Pontuação</th>
+                <th scope="col">Obs</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Brasil 3 x 1 Argentina</td>
+                <td>18 pontos</td>
+                <td>Placar exato</td>
+            </tr>
+            <tr>
+                <td>Brasil 3 x 0 Argentina</td>
+                <td>12 pontos</td>
+                <td>9 pelo time vencedor + 3 pelo acerto dos gols de um dos times</td>
+            </tr>
+            <tr>
+                <td>Brasil 2 x 0 Argentina</td>
+                <td>9 pontos</td>
+                <td>Acertou o time vencedor</td>
+            </tr>
+            <tr>
+                <td>Brasil 0 x 1 Argentina</td>
+                <td>3 pontos</td>
+                <td>Acertou o número de gols de um dos times</td>
+            </tr>
+            <tr>
+                <td>Brasil 3 x 4 Argentina</td>
+                <td>3 pontos</td>
+                <td>Acertou o número de gols de um dos times</td>
+            </tr>
+            <tr>
+                <td>Brasil 0 x 0 Argentina</td>
+                <td>0 pontos</td>
+                <td>Errou tudo</td>
+            </tr>
+        </tbody>
+    </table>
+    <h2>FAQ</h2>
+    <h5>Qualquer um pode criar um bolão?</h5>
+    <p>Sim</p>
+    <h5>Quanto custa criar um bolão?</h5>
+    <p>Nada, é gratuito.</p>
+    <h5>Qual o valor da aposta?</h5>
+    <p>Quem cria o bolão decide. Cada bolão pode ter um preço diferente. Recomendamos algo em torno de R$10</p>
+    <h5>Como eu faço o pagamento da aposta?</h5>
+    <p>Quem cria o bolão decide. Pode ser por dinheiro, transferência, cartão, etc etc etc. Nos não intermediamos nenhum valor.</p>
+    <h5>O bolão é só da primeira fase da copa do mundo?</h5>
+    <p>Sim. Após os 48 jogos iniciais o bolão termina. A fase de mata-mata não está prevista</p>
+    <h5>Posso criar um bolão para a minha empresa?  Posso criar um bolão para a minha familia?</h5>
+    <p>Sim e sim</p>
+    <h5>Posso apostar em mais de um bolão? Posso apostar duas vezes no mesmo bolão? O administrador do bolão pode apostar também?</h5>
+    <p>Sim, sim e sim</p>
+    <h5>Qual a premiação do bolão?</h5>
+    <p>Quem cria o bolão decide. Recomendamos 60% para o primeiro colocado, 30% para o segundo e 10% para o terceiro</p>
+    <h5>Como eu faço o cadastro?</h5>
+    <p>Não existe cadastro. Ao fazer a aposta e efetuar o pagamento ao criador do bolão, ele marca seu nome como “pago”.<br>
+        Uma vez com o pagamento registrado, você esta participando do bolão.
+    </p>
+    <h5>É gratuito mesmo? Tem pegadinha?</h5>
+    <p>Sim, não.</p>
+    <h5>Sou atleticano ou corintiano. Posso apostar?</h5>
+    <p>Infelizmente sim.</p>
+    <h5>Existe suporte?</h5>
+    <p>Não</p>
+    <h5>Qual o email de contato?</h5>
+    <p>Rodrigo e Guilherme<br>
+        <a href="mailto:bolaodagalera2018@gmail.com">bolãodagalera2018@gmail.com</a>
+    </p>
+</div>
+
+{% endblock %}
+{% set title = 'Intro' %}
