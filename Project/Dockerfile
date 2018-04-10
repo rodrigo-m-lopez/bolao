@@ -10,9 +10,6 @@ RUN apt-get update \
 RUN echo "America/Sao_Paulo" > /etc/timezone; dpkg-reconfigure -f noninteractive tzdata
 RUN echo 'pt_BR.UTF-8 UTF-8' >> /etc/locale.gen && locale-gen && DEBIAN_FRONTEND=noninteractive dpkg-reconfigure locales
 
-RUN  echo Current datetime is :
-RUN  echo `date`
-
 RUN mkdir /bolao
 RUN mkdir /bolao/Project
 
