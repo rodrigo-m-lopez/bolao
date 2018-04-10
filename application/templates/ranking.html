@@ -1,0 +1,33 @@
+{% extends 'menu_base.html' %}
+
+{% block content %}
+
+<table class="table table-striped table-sm text-center" align="center">
+	<thead class="thead-dark">
+    <tr>
+      <th scope="col">#</th>
+	  <th scope="col">Nome</th>
+	  <th scope="col">Pontuação</th>
+	  <th scope="col">Placares Exatos</th>
+	  <th scope="col">Vencedor ou empate</th>
+	  <th scope="col">Gols de um time</th>
+	  <th scope="col"></th>
+    </tr>
+  </thead>
+  <tbody>
+{% for usuario in lista_usuarios -%}
+	<tr class="{% if not usuario.pago %} list-group-item-danger{% endif %}">	  
+	  <td scope="row">{{loop.index}}</td>
+	  <td><a href="/{{ bolao }}/palpite/{{ usuario.nome }}"> {{ usuario.nome }}</a></td>
+	  <td>{{ usuario.pontuacao }}</td>
+	  <td>{{ usuario.placar_exato }}</td>
+	  <td>{{ usuario.vencedor_ou_empate }}</td>
+	  <td>{{ usuario.gols_de_um_time }}</td>
+	  <td>{% if not usuario.pago %}<small class="text-muted">Não Pago</small>{% endif %}</td>	   
+	</tr>
+{% endfor %}
+   </tbody>
+</table>
+{% endblock %}
+
+{% set title = 'Ranking' %}

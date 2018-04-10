@@ -1,0 +1,97 @@
+{% extends 'menu_gerencia_bolao.html' %}
+
+{% block content %}
+
+<form method="POST" action="/novo_bolao" data-toggle="validator">
+<div class="form-group" >
+	<input type="text" class="form-control" onblur="validaNomeBolao()" style="width: 52rem;" name="inputNome" id="inputNome" placeholder="Nome" required>
+	<div class="help-block with-errors text-danger"></div>
+	<div id="divErro"></div>
+</div>
+
+<div class="form-group" >
+	<input type="text" class="form-control" style="width: 52rem;" name="inputResponsavel" id="inputResponsavel" placeholder="Responsável" required>
+	<div class="help-block with-errors text-danger"></div>
+</div>
+<div class="form-group">
+	<input type="email" class="form-control" style="width: 52rem;" name="inputEmail" id="inputEmail" aria-describedby="emailHelp" placeholder="Email do Responsável" required>
+	<div class="help-block with-errors text-danger"></div>
+</div>
+<div class="form-group" >
+	<div class="input-group mb-3" style="width: 52rem;">
+	  <div class="input-group-prepend">
+		<span class="input-group-text">R$</span>
+	  </div>
+	  <input type="number" min="0" step="5" class="form-control"  name="inputValor" id="inputValor" placeholder="Valor" required>
+	  <div class="input-group-append">
+		<span class="input-group-text">,00</span>
+	  </div> 	  
+	</div>
+	<div class="help-block with-errors text-danger"></div>
+</div>
+<div class="form-group">
+    <input type="password" style="width: 52rem;" class="form-control" id="inputSenhaAdmin" name="inputSenhaAdmin" placeholder="Senha do Admin" required>
+	<div class="help-block with-errors text-danger"></div>
+</div>	
+<div class="form-group">
+	<input type="password" style="width: 52rem;" class="form-control" id="inputSenhaAdminRepetida" name="inputSenhaAdminRepetida" placeholder="Repita a senha do Admin" required data-match="#inputSenhaAdmin" data-match-error="Senhas não conferem">
+	<div class="help-block with-errors text-danger"></div>
+</div>
+<div class="form-group">
+	<textarea class="form-control" style="overflow:hidden; width: 52rem;" id="inputDescricao" name="inputDescricao" placeholder="Descrição (Opcional)" rows="3"></textarea>
+</div>
+<BR>
+<button type="submit" class="btn btn-primary">ENVIAR</button></p>
+ </form>
+ <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="exampleModalLabel">Erro</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        {{ erro }}
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script>	
+	function validaNomeBolao() {
+	  var xhttp = new XMLHttpRequest();
+	  xhttp.onreadystatechange = function() {
+		if (this.readyState == 4 && this.status == 200) {
+		  document.getElementById("divErro").innerHTML = montaAlerta(this.responseText);
+		  if (this.responseText > ''){
+			document.getElementById("inputNome").select();
+		  }
+		}
+	  };
+	  xhttp.open("POST", "/valida_nome_bolao", true);
+	  xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+	  xhttp.send("nome_bolao=" + document.getElementById("inputNome").value);
+	}
+</script>
+{% endblock %}
+
+{% block script_after %}
+<script>
+	{% if erro %}
+	$(window).on('load',function(){
+			$('#myModal').modal('show');
+		});
+	{% endif %}	
+</script>	
+{% endblock %}
+
+
+
+{% set title = 'Novo Bolão' %}

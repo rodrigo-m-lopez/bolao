@@ -6,8 +6,8 @@ def get_db_client():
 
     client = None
 
-    if __is_hostname_reachable('db_container'):
-        client = MongoClient('mongodb://bolao_user:bolao_pass@db_container:27017/admin')
+    if __is_hostname_reachable('db'):
+        client = MongoClient('mongodb://bolao_user:bolao_pass@db:27017/admin')
     else:
         # if dev environment
         client = MongoClient()
