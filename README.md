@@ -9,12 +9,12 @@ cd (...)\bolao
 pip install virtualenv
 virtualenv venv
 venv\Scripts\activate
-cd app
+cd application
 pip install -r requirements.txt
 ```
 Se for instalar mais alguma dependencia do python com pip install, abre o power shell e roda os comandos abaixo:
 ```
-cd (...)\bolao\app
+cd (...)\bolao\application
 pip freeze > requirements.txt
 git add requirements.txt
 git commit -m "atualizando as dependências"
@@ -60,7 +60,7 @@ python GloboEsporteCrawler.py
 ```
 cd (...)\bolao
 venv/Scripts/activate
-cd app
+cd application
 sudo python3 app.py
 ```
 
@@ -86,7 +86,7 @@ eu copiei via ssh da minha máquna local a pasta bolao para ~/bolao, depois diss
 cd bolao
 python3.6 -m venv venv
 . venv/bin/activate
-cd app/
+cd application/
 pip install -r requirements.txt
 ```
 
