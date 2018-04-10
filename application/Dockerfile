@@ -11,9 +11,9 @@ RUN echo "America/Sao_Paulo" > /etc/timezone; dpkg-reconfigure -f noninteractive
 RUN echo 'pt_BR.UTF-8 UTF-8' >> /etc/locale.gen && locale-gen && DEBIAN_FRONTEND=noninteractive dpkg-reconfigure locales
 
 RUN mkdir /bolao
-RUN mkdir /bolao/Project
+RUN mkdir /bolao/application
 
-WORKDIR bolao/Project
+WORKDIR bolao/application
 
 COPY requirements.txt .
 RUN pip install -r requirements.txt

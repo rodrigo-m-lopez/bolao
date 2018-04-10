@@ -6,7 +6,7 @@ import os
 import GloboEsporteCrawler
 
 
-# TODO: rodrigo:  O ideal seria colocar a pasta teste_crawler fora da pasta project... Quando copia para o docker demora muito
+# TODO: rodrigo:  O ideal seria colocar a pasta teste_crawler fora da pasta app... Quando copia para o docker demora muito
 
 
 encoding = 'latin-1'
