@@ -1,17 +1,33 @@
 version: '3'
 services:
-  web_container:
-    build: Project/.
-    image: web_image
+
+  nginx:
+    container_name: nginx
+    image: nginx
     restart: always
+    build: ./nginx
     ports:
     - "80:80"
     links:
-    - db_container
+    - db
     depends_on:
-      - db_container
-  db_container:
+    - app
+
+  app:
+    container_name: app
+    image: app
+    build: application/.
+    restart: always
+    expose:
+    - "8000"
+    links:
+    - db
+    depends_on:
+    - db
+
+  db:
     image: mongo
+    container_name: db
     restart: always
     environment:
     - MONGO_DATA_DIR=/data/db
@@ -19,8 +35,8 @@ services:
     - MONGO_INITDB_ROOT_PASSWORD=bolao_pass
     expose:
     - "27017"
-    volumes:
-    - /home/ec2-user/bolao/db:/data/db
+#    volumes:
+#    - /home/ec2-user/bolao/db:/data/db
 
     
 # run this compose with:

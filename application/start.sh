@@ -1,5 +1,7 @@
 #!/bin/sh
 
+# please do not change this file...please!
+
 echo _Starting...
 
 echo _    Running Crawler...
@@ -12,4 +14,4 @@ service cron start
 echo _    Starting Cron...OK!
 
 echo _Starting...OK!
-python hello.py
+gunicorn -w 1 -b :8000 app:app
