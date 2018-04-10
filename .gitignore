@@ -1,8 +1,7 @@
-app/.idea/
-app/__pycache__/
-Papp/teste_crawler/
+application/.idea/
+application/__pycache__/
+application/teste_crawler/
 data/
 venv/
 \.idea/
 
-application/__pycache__/
