@@ -2,7 +2,7 @@
 
 # please do not change this file...please!
 
-sleep 10
+sleep 5
 
 echo _Starting...
 
