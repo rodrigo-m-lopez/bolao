@@ -2,6 +2,8 @@
 
 # please do not change this file...please!
 
+sleep 10
+
 echo _Starting...
 
 echo _    Running Crawler...
