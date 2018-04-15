@@ -8,10 +8,13 @@ services:
     build: ./nginx
     ports:
     - "80:80"
+    - "443:443"
     links:
     - db
     depends_on:
     - app
+    volumes:
+    - "/home/ec2-user/bolao/certs:/etc/nginx/certs"
 
   app:
     container_name: app
@@ -35,8 +38,8 @@ services:
     - MONGO_INITDB_ROOT_PASSWORD=bolao_pass
     expose:
     - "27017"
-#    volumes:
-#    - /home/ec2-user/bolao/db:/data/db
+    volumes:
+    - /home/ec2-user/bolao/db:/data/db
 
     
 # run this compose with:
