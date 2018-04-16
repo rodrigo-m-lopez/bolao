@@ -8,6 +8,9 @@
   </button>
   <ul class="nav nav-tabs">
 	  <li class="nav-item">
+		<a class="nav-item nav-link{% if title == 'Descrição Bolão' %} active{% endif %}" href="/{{ bolao }}/descricao_bolao">Descrição</a>
+	  </li>
+	  <li class="nav-item">
 		<a class="nav-item nav-link{% if title == 'Ranking' %} active{% endif %}" href="/{{ bolao }}/ranking">Ranking</a>
 	  </li>
 	  <li class="nav-item">
