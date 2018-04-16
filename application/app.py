@@ -74,6 +74,11 @@ def aposta(bolao):
             return render_template('aposta.html', bolao=bolao, grupos=grupos, nome_existente=request.form['inputNome'])
 
 
+@app.route('/<bolao>/descricao_bolao')
+def descricao(bolao):
+    return render_template('descricao_bolao.html', bolao=bolao, bolao_selecionado=tbl_bolao.find_one({'nome': bolao}))
+
+
 @app.route('/<bolao>/ranking')
 def ranking(bolao):
     lista_usuarios = monta_dto_usuarios(bolao)
@@ -194,6 +199,7 @@ def cria_bolao(form):
                           'email': form['inputEmail'],
                           'valor': int(form['inputValor']),
                           'senhaAdmin': hash_password(form['inputSenhaAdmin']),
+                          'premiacao': form['inputPremiacao'],
                           'descricao': form['inputDescricao']})
 
 
@@ -235,6 +241,7 @@ def valida_informacoes_bolao(form):
                   valida_campo_numerico(form['inputValor']),
                   valida_campo_preenchido(form['inputSenhaAdmin'], 'Senha do Admin'),
                   valida_campo_preenchido(form['inputSenhaAdminRepetida'], 'Repetição da senha do Admin'),
+                  valida_campo_preenchido(form['inputPremiacao'], 'Premiação'),
                   valida_senhas_iguais(form['inputSenhaAdmin'], form['inputSenhaAdminRepetida'])]
     for erro in validacoes:
         if erro > '':
