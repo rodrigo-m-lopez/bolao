@@ -11,7 +11,7 @@ duracao_horas = 2
 
 horarios = {}
 
-FORMATO_COMANDO = '* {}-{} {} 6 * python GloboEsporteCrawler.py'
+FORMATO_COMANDO = '* {}-{} {} 6 * python /bolao/application/GloboEsporteCrawler.py'
 
 for jogo in tbl_jogo.find():
     datetime_jogo = jogo['data']
