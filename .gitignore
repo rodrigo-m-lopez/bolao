@@ -1,7 +1,7 @@
-.idea/
-Project/.idea/
-Project/__pycache__/
-Project/teste_crawler/
+application/.idea/
+application/__pycache__/
+application/teste_crawler/
 data/
 venv/
 \.idea/
+

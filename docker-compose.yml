@@ -1,0 +1,55 @@
+version: '3'
+services:
+
+  nginx:
+    container_name: nginx
+    image: nginx
+    restart: always
+    build: ./nginx
+    ports:
+    - "80:80"
+    links:
+    - db
+    depends_on:
+    - app
+
+  app:
+    container_name: app
+    image: app
+    build: application/.
+    restart: always
+    expose:
+    - "8000"
+    links:
+    - db
+    depends_on:
+    - db
+
+  db:
+    image: mongo
+    container_name: db
+    restart: always
+    environment:
+    - MONGO_DATA_DIR=/data/db
+    - MONGO_INITDB_ROOT_USERNAME=bolao_user
+    - MONGO_INITDB_ROOT_PASSWORD=bolao_pass
+    expose:
+    - "27017"
+#    volumes:
+#    - /home/ec2-user/bolao/db:/data/db
+
+    
+# run this compose with:
+# 
+# cd /home/ec2-user/bolao/src
+# docker-compose up -d
+#
+# usefull commands:
+#
+# docker-compose stop                                   ->  Stop all containers
+# docker-compose rm                                     ->  Delete all containers
+# docker-compose ps                                     ->  See which containers are running
+# 
+# docker system prune --all --volumes --force           ->  Delete EVERYTHING: containers, networks, etc
+#
+
