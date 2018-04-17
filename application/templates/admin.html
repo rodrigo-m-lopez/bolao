@@ -27,12 +27,12 @@
           <td>{{ usuario.nome }}</td>
 
           {% if not usuario.pago %}
-          <td><button type="button" class="btn btn-primary" name ="{{ usuario.nome }}" onclick="togglePago(this)">Marcar como pago</button></td>
+          <td><button type="button" class="btn btn-primary btn-sm" name ="{{ usuario.nome }}" onclick="togglePago(this)">Marcar como pago</button></td>
           {% else %}
-          <td><button type="button" class="btn btn-success" name ="{{ usuario.nome }}" onclick="togglePago(this)">Pago</button></td>
+          <td><button type="button" class="btn btn-success btn-sm" name ="{{ usuario.nome }}" onclick="togglePago(this)">Pago</button></td>
           {% endif %}
 
-          <td><button type="button" class="btn btn-danger" name ="{{ usuario.nome }}" onclick="removerAposta(this)">Remover Aposta</button></td>
+          <td><button type="button" class="btn btn-danger btn-sm" name ="{{ usuario.nome }}" onclick="removerAposta(this)">Remover Aposta</button></td>
 
         </tr>
     {% endfor %}
