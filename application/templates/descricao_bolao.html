@@ -1,0 +1,52 @@
+{% extends 'menu_base.html' %}
+
+{% block content %}
+
+ <div class="card card-outline-secondary">
+	<div class="card-header">
+		<h3 class="mb-0">Descrição do Bolão</h3>
+	</div>
+	<div class="card-body">
+		<form>
+			<div class="form-group row">
+				<label for="inputNome" class="col-sm-2 col-form-label font-weight-bold">Nome</label>
+				<input type="text" readonly class="form-control col-sm-4" style="width: 52rem;" value="{{bolao_selecionado.nome}}" id="inputNome">
+			</div>
+
+			<div class="form-group row">
+				<label for="inputResponsavel" class="col-sm-2 col-form-label font-weight-bold">Responsável</label>
+				<input type="text" readonly class="form-control col-sm-4" style="width: 52rem;" value="{{bolao_selecionado.responsavel}}" id="inputResponsavel">
+			</div>
+
+			<div class="form-group row">
+				<label for="inputEmail" class="col-sm-2 col-form-label font-weight-bold">Email</label>
+				<input type="text" readonly class="form-control col-sm-4" style="width: 52rem;" value="{{bolao_selecionado.email}}" id="inputEmail">
+			</div>
+
+			<div class="form-group row">
+				<label for="inputValor" class="col-sm-2 col-form-label font-weight-bold">Valor do Bolão</label>
+				<div class="input-group mb-3" style="width: 52rem;">
+					<div class="input-group-prepend">
+						<span class="input-group-text">R$</span>
+					</div>
+
+					<input type="text" readonly class="form-control col-sm-4" style="width: 52rem;" value="{{bolao_selecionado.valor}}" id="inputValor">
+				</div>
+			</div>
+
+			<div class="form-group row">
+				<label for="inputPremiacao" class="col-sm-2 col-form-label font-weight-bold">Premiação</label>
+				<textarea class="form-control" readonly class="form-control col-sm-4" style="overflow:hidden; width: 52rem;" id="inputPremiacao" rows="3">{{bolao_selecionado.premiacao}}</textarea>
+			</div>
+
+			<div class="form-group row">
+				<label for="inputDescricao" class="col-sm-2 col-form-label font-weight-bold">Descrição</label>
+				<textarea class="form-control" readonly class="form-control col-sm-4" style="overflow:hidden; width: 52rem;" id="inputDescricao" rows="3">{{bolao_selecionado.descricao}}</textarea>
+			</div>
+		</form>
+	  </div>
+</div>
+
+{% endblock %}
+
+{% set title = 'Descrição Bolão' %}
