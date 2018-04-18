@@ -95,7 +95,7 @@ def admin(bolao):
 
         if check_password(hashed_password, input_senha_admin):
             lista_usuarios = monta_dto_usuarios(bolao)
-            return render_template('admin.html', bolao=bolao, lista_usuarios=lista_usuarios)
+            return render_template('admin.html', bolao=bolao, lista_usuarios=lista_usuarios, senha_admin=input_senha_admin)
         else:
             return render_template('valida_admin_bolao.html', bolao=bolao, erro='Senha Invalida')
 
@@ -118,17 +118,23 @@ def valida_usuario(bolao):
 
 @app.route('/<bolao>/toggle_pago', methods=['POST'])
 def toggle_pago(bolao):
-    id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
-    nome_usuario = request.form['usuario']
-    usuario = tbl_usuario.find_one({'nome': nome_usuario, 'bolao': id_bolao})
-    novo_pago = not usuario['pago']
+    input_senha_admin = request.form['senha']
+    hashed_password = tbl_bolao.find_one({'nome': bolao})['senhaAdmin']
 
-    tbl_usuario.update_one({"nome": nome_usuario,
-                            'bolao': id_bolao},
-                           {"$set": {"pago": novo_pago}})
+    if check_password(hashed_password, input_senha_admin):
+        id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
+        nome_usuario = request.form['usuario']
+        usuario = tbl_usuario.find_one({'nome': nome_usuario, 'bolao': id_bolao})
+        novo_pago = not usuario['pago']
 
-    lista_usuarios = monta_dto_usuarios(bolao)
-    return render_template('admin.html', bolao=bolao, lista_usuarios=lista_usuarios)
+        tbl_usuario.update_one({"nome": nome_usuario,
+                                'bolao': id_bolao},
+                               {"$set": {"pago": novo_pago}})
+
+        lista_usuarios = monta_dto_usuarios(bolao)
+        return render_template('admin.html', bolao=bolao, lista_usuarios=lista_usuarios, senha_admin=input_senha_admin)
+    else:
+        return render_template('valida_admin_bolao.html', bolao=bolao, erro='Requisição inválida')
 
 
 @app.route('/pago', methods=['GET', 'POST'])
@@ -138,19 +144,31 @@ def grade():
 
 @app.route('/<bolao>/remover_aposta', methods=['POST'])
 def remover_aposta(bolao):
-    id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
-    nome_usuario = request.form['usuario']
-    usuario = tbl_usuario.find_one({'nome': nome_usuario, 'bolao': id_bolao})
-    id_usuario = tbl_usuario.find_one({"nome": nome_usuario, 'bolao': id_bolao})['_id']
-    tbl_usuario.remove(id_usuario)
-    lista_usuarios = monta_dto_usuarios(bolao)
-    return render_template('admin.html', bolao=bolao, lista_usuarios=lista_usuarios)
+    input_senha_admin = request.form['senha']
+    hashed_password = tbl_bolao.find_one({'nome': bolao})['senhaAdmin']
 
-@app.route('/<bolao>/remover_bolao')
+    if check_password(hashed_password, input_senha_admin):
+        id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
+        nome_usuario = request.form['usuario']
+        id_usuario = tbl_usuario.find_one({"nome": nome_usuario, 'bolao': id_bolao})['_id']
+        tbl_usuario.remove(id_usuario)
+        lista_usuarios = monta_dto_usuarios(bolao)
+        return render_template('admin.html', bolao=bolao, lista_usuarios=lista_usuarios, senha_admin=input_senha_admin)
+    else:
+        return render_template('valida_admin_bolao.html', bolao=bolao, erro='Requisição inválida')
+
+
+@app.route('/<bolao>/remover_bolao', methods=['POST'])
 def remover_bolao(bolao):
-    id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
-    tbl_bolao.remove(id_bolao)
-    return redirect(url_for('lista_bolao'))
+    input_senha_admin = request.form['senha']
+    hashed_password = tbl_bolao.find_one({'nome': bolao})['senhaAdmin']
+
+    if check_password(hashed_password, input_senha_admin):
+        id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
+        tbl_bolao.remove(id_bolao)
+        return redirect(url_for('lista_bolao'))
+    else:
+        return render_template('valida_admin_bolao.html', bolao=bolao, erro='Requisição inválida')
 
 
 @app.route('/<bolao>/palpite/<nome_usuario>')

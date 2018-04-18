@@ -6,8 +6,28 @@
 <div class="card mt-5 w-75">
   <div class="card-body">
     <h5 class="card-title">Cuidado ao remover o bolao. Nao existe volta!</h5>
-    <a href="/{{ bolao }}/remover_bolao" class="btn btn-danger">Remover Bolao</a>
+	<input type="button" class="btn btn-danger btn-sm" name="btnRemoverBolao" value="Remover Bolão" id="submitBtn" data-toggle="modal" data-target="#confirm-submit" class="btn btn-default" />
   </div>
+</div>
+
+<div class="modal fade" id="confirm-submit" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                Confirmar deleção
+            </div>
+            <div class="modal-body">
+                Deseja realmente deletar este bolão?
+			</div>	
+			<div class="modal-footer">
+				<button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+				<form method="post" action="/{{ bolao }}/remover_bolao" class="inline">
+				  <input type="hidden" name="senha" value="{{ senha_admin }}">
+				  <button type="submit" class="btn btn-success success">Confirmar</button>
+				</form>
+			</div>
+		</div>
+    </div>
 </div>
 
  <div class="card mt-5 w-75">
@@ -45,17 +65,19 @@
 {% block script %}
 <script>
 	function removerAposta(sender) {
-	  var xhttp = new XMLHttpRequest();
-	  xhttp.open("POST", "/{{ bolao }}/remover_aposta", true);
-	  xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-	  xhttp.onreadystatechange = function() {
-            if (this.readyState == 4 && this.status == 200) {
-                document.open();
-                document.write(this.responseText);
-                document.close();
-            }
-        };
-	  xhttp.send("usuario=" + sender.name);
+	if (confirm('Confirma deleção da aposta '+ sender.name + '?')) {
+		  var xhttp = new XMLHttpRequest();
+		  xhttp.open("POST", "/{{ bolao }}/remover_aposta", true);
+		  xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+		  xhttp.onreadystatechange = function() {
+				if (this.readyState == 4 && this.status == 200) {
+					document.open();
+					document.write(this.responseText);
+					document.close();
+				}
+			};
+		  xhttp.send("usuario=" + sender.name + "&senha={{ senha_admin }}" );
+		}
 	}
 
     function togglePago(sender) {
@@ -69,7 +91,7 @@
                 document.close();
             }
         };
-        xhttp.send("usuario=" + sender.name);
+        xhttp.send("usuario=" + sender.name + "&senha={{ senha_admin }}");
     }
 </script>
 {% endblock %}
