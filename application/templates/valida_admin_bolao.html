@@ -1,14 +1,14 @@
+{% from "_formhelpers.html" import render_field %}
 {% extends 'menu_base.html' %}
 
 {% block content %}
 
 <form method="POST" action="/{{ bolao }}/admin" data-toggle="validator">
-	<div class="form-group" >
-		<input type="password" class="form-control" style="width: 52rem;" name="senhaAdmin" id="senhaAdmin" placeholder="Insira a senha de admin..." required>
-		<div class="help-block with-errors text-danger"></div>
-		<div id="divErro"></div>
-	</div>
-
+	{{ form.csrf_token }}
+	<p>			
+	{{ render_field(form.senha) }}
+	{{ render_field(form.recaptcha) }}
+	</p>
 	<BR>
 	<button type="submit" class="btn btn-primary">ENVIAR</button></p>
 </form>

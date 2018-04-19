@@ -5,7 +5,7 @@ import os
 sys.path.append(os.path.abspath('../../bolao'))
 
 import pymongo
-from flask import Flask
+from flask import Flask, flash
 from flask import request
 from flask import render_template, redirect, url_for
 from operator import itemgetter
@@ -14,6 +14,18 @@ import hashlib
 from bson import ObjectId
 
 from application.db_config import get_db_client
+
+from flask_wtf import FlaskForm, RecaptchaField
+from wtforms import PasswordField
+from wtforms.validators import DataRequired
+
+SECRET_KEY = 'secret'
+
+# keys for localhost. Change as appropriate.
+
+RECAPTCHA_PUBLIC_KEY = '6LfnDVQUAAAAAOcH5O6oX9h78xyqHrrcWhuMooZz'
+RECAPTCHA_PRIVATE_KEY = '6LfnDVQUAAAAANOCgF_2uPNXAG9pFw9yY5hwLn-9'
+
 client = get_db_client()
 
 db = client.dev
@@ -25,9 +37,15 @@ tbl_palpite = db.palpite
 tbl_pontuacao = db.pontuacao
 
 app = Flask(__name__)
+app.config.from_object(__name__)
 
 grupos = {}
 todos_jogos = []
+
+class SignupForm(FlaskForm):
+    senha = PasswordField("Senha Admin:", validators=[DataRequired()])
+    recaptcha = RecaptchaField()
+
 
 @app.route('/')
 def inicio():
@@ -45,9 +63,11 @@ def novo_bolao():
         cria_bolao(request.form)
         return lista_bolao()
 
+
 @app.route('/intro')
 def intro():
     return render_template('intro.html')
+
 
 @app.route('/lista_bolao')
 def lista_bolao():
@@ -85,19 +105,32 @@ def ranking(bolao):
     return render_template('ranking.html', bolao=bolao, lista_usuarios=lista_usuarios)
 
 
+def flash_errors(form):
+    for field, errors in form.errors.items():
+        for error in errors:
+            flash(u"Erro no campo %s - %s" % (getattr(form, field).label.text, error))
+
 @app.route('/<bolao>/admin', methods=['GET', 'POST'])
 def admin(bolao):
     if request.method == 'GET':
-        return render_template('valida_admin_bolao.html', bolao=bolao)
+        form = SignupForm()
+        return render_template('valida_admin_bolao.html', bolao=bolao, form=form)
     else:
-        input_senha_admin = request.form['senhaAdmin']
-        hashed_password = tbl_bolao.find_one({'nome': bolao})['senhaAdmin']
+        form = SignupForm()
+        if form.validate_on_submit():
+            print(form.senha.data)
+            input_senha_admin = form.senha.data
+            hashed_password = tbl_bolao.find_one({'nome': bolao})['senhaAdmin']
 
-        if check_password(hashed_password, input_senha_admin):
-            lista_usuarios = monta_dto_usuarios(bolao)
-            return render_template('admin.html', bolao=bolao, lista_usuarios=lista_usuarios, senha_admin=input_senha_admin)
+            if check_password(hashed_password, input_senha_admin):
+                lista_usuarios = monta_dto_usuarios(bolao)
+                return render_template('admin.html', bolao=bolao, lista_usuarios=lista_usuarios, senha_admin=input_senha_admin)
+            else:
+                flash('Senha Inválida')
         else:
-            return render_template('valida_admin_bolao.html', bolao=bolao, erro='Senha Invalida')
+            flash_errors(form)
+
+        return render_template('valida_admin_bolao.html', bolao=bolao, form=form)
 
 @app.route('/valida_nome_bolao', methods=['POST'])
 def valida_nome_bolao():
