@@ -22,7 +22,6 @@
 			<div class="modal-footer">
 				<button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
 				<form method="post" action="/{{ bolao }}/remover_bolao" class="inline">
-				  <input type="hidden" name="senha" value="{{ senha_admin }}">
 				  <button type="submit" class="btn btn-success success">Confirmar</button>
 				</form>
 			</div>
@@ -76,7 +75,7 @@
 					document.close();
 				}
 			};
-		  xhttp.send("usuario=" + sender.name + "&senha={{ senha_admin }}" );
+		  xhttp.send("usuario=" + sender.name );
 		}
 	}
 
@@ -91,7 +90,7 @@
                 document.close();
             }
         };
-        xhttp.send("usuario=" + sender.name + "&senha={{ senha_admin }}");
+        xhttp.send("usuario=" + sender.name);
     }
 </script>
 {% endblock %}
