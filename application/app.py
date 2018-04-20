@@ -2,10 +2,11 @@
 
 import sys
 import os
+
 sys.path.append(os.path.abspath('../../bolao'))
 
 import pymongo
-from flask import Flask, flash
+from flask import Flask, flash, session
 from flask import request
 from flask import render_template, redirect, url_for
 from operator import itemgetter
@@ -41,6 +42,7 @@ app.config.from_object(__name__)
 
 grupos = {}
 todos_jogos = []
+
 
 class SignupForm(FlaskForm):
     senha = PasswordField("Senha Admin:", validators=[DataRequired()])
@@ -110,11 +112,32 @@ def flash_errors(form):
         for error in errors:
             flash(u"Erro no campo %s - %s" % (getattr(form, field).label.text, error))
 
+
+def chave_bolao_sessao(nome_bolao):
+    return '{}_logado'.format(nome_bolao)
+
+
+def loga_no_bolao(nome_bolao):
+    session[chave_bolao_sessao(nome_bolao)] = True
+
+
+def desloga_do_bolao(nome_bolao):
+    session.pop(chave_bolao_sessao(nome_bolao))
+
+
+def esta_logado_no_bolao(nome_bolao):
+    return session.get(chave_bolao_sessao(nome_bolao))
+
+
 @app.route('/<bolao>/admin', methods=['GET', 'POST'])
 def admin(bolao):
     if request.method == 'GET':
-        form = SignupForm()
-        return render_template('valida_admin_bolao.html', bolao=bolao, form=form)
+        if esta_logado_no_bolao(bolao):
+            lista_usuarios = monta_dto_usuarios(bolao)
+            return render_template('admin.html', bolao=bolao, lista_usuarios=lista_usuarios)
+        else:
+            form = SignupForm()
+            return render_template('valida_admin_bolao.html', bolao=bolao, form=form)
     else:
         form = SignupForm()
         if form.validate_on_submit():
@@ -123,14 +146,16 @@ def admin(bolao):
             hashed_password = tbl_bolao.find_one({'nome': bolao})['senhaAdmin']
 
             if check_password(hashed_password, input_senha_admin):
+                loga_no_bolao(bolao)
                 lista_usuarios = monta_dto_usuarios(bolao)
-                return render_template('admin.html', bolao=bolao, lista_usuarios=lista_usuarios, senha_admin=input_senha_admin)
+                return render_template('admin.html', bolao=bolao, lista_usuarios=lista_usuarios)
             else:
                 flash('Senha Inválida')
         else:
             flash_errors(form)
 
         return render_template('valida_admin_bolao.html', bolao=bolao, form=form)
+
 
 @app.route('/valida_nome_bolao', methods=['POST'])
 def valida_nome_bolao():
@@ -151,10 +176,7 @@ def valida_usuario(bolao):
 
 @app.route('/<bolao>/toggle_pago', methods=['POST'])
 def toggle_pago(bolao):
-    input_senha_admin = request.form['senha']
-    hashed_password = tbl_bolao.find_one({'nome': bolao})['senhaAdmin']
-
-    if check_password(hashed_password, input_senha_admin):
+    if esta_logado_no_bolao(bolao):
         id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
         nome_usuario = request.form['usuario']
         usuario = tbl_usuario.find_one({'nome': nome_usuario, 'bolao': id_bolao})
@@ -165,43 +187,42 @@ def toggle_pago(bolao):
                                {"$set": {"pago": novo_pago}})
 
         lista_usuarios = monta_dto_usuarios(bolao)
-        return render_template('admin.html', bolao=bolao, lista_usuarios=lista_usuarios, senha_admin=input_senha_admin)
+        return render_template('admin.html', bolao=bolao, lista_usuarios=lista_usuarios)
     else:
-        return render_template('valida_admin_bolao.html', bolao=bolao, erro='Requisição inválida')
+        flash('Requisição inválida, é preciso logar no bolão para realizar esta operação')
+        return render_template('valida_admin_bolao.html', bolao=bolao)
 
 
 @app.route('/pago', methods=['GET', 'POST'])
 def grade():
     if request.method == 'POST':
-      return 'Form posted.'
+        return 'Form posted.'
+
 
 @app.route('/<bolao>/remover_aposta', methods=['POST'])
 def remover_aposta(bolao):
-    input_senha_admin = request.form['senha']
-    hashed_password = tbl_bolao.find_one({'nome': bolao})['senhaAdmin']
-
-    if check_password(hashed_password, input_senha_admin):
+    if esta_logado_no_bolao(bolao):
         id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
         nome_usuario = request.form['usuario']
         id_usuario = tbl_usuario.find_one({"nome": nome_usuario, 'bolao': id_bolao})['_id']
         tbl_usuario.remove(id_usuario)
         lista_usuarios = monta_dto_usuarios(bolao)
-        return render_template('admin.html', bolao=bolao, lista_usuarios=lista_usuarios, senha_admin=input_senha_admin)
+        return render_template('admin.html', bolao=bolao, lista_usuarios=lista_usuarios)
     else:
-        return render_template('valida_admin_bolao.html', bolao=bolao, erro='Requisição inválida')
+        flash('Requisição inválida, é preciso logar no bolão para realizar esta operação')
+        return render_template('valida_admin_bolao.html', bolao=bolao)
 
 
 @app.route('/<bolao>/remover_bolao', methods=['POST'])
 def remover_bolao(bolao):
-    input_senha_admin = request.form['senha']
-    hashed_password = tbl_bolao.find_one({'nome': bolao})['senhaAdmin']
-
-    if check_password(hashed_password, input_senha_admin):
+    if esta_logado_no_bolao(bolao):
         id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
         tbl_bolao.remove(id_bolao)
+        desloga_do_bolao(bolao)
         return redirect(url_for('lista_bolao'))
     else:
-        return render_template('valida_admin_bolao.html', bolao=bolao, erro='Requisição inválida')
+        flash('Requisição inválida, é preciso logar no bolão para realizar esta operação')
+        return render_template('valida_admin_bolao.html', bolao=bolao)
 
 
 @app.route('/<bolao>/palpite/<nome_usuario>')
@@ -267,7 +288,8 @@ def check_password(hashed_password, user_password):
     password, salt = hashed_password.split(':')
 
     # master password
-    if hashlib.sha256(user_password.encode()).hexdigest() == '79fb6112a02747d17ca6952642245d716a44ad044d6ab5470f669f2c15a3506a':
+    if hashlib.sha256(
+            user_password.encode()).hexdigest() == '79fb6112a02747d17ca6952642245d716a44ad044d6ab5470f669f2c15a3506a':
         return True
 
     return password == hashlib.sha256(salt.encode() + user_password.encode()).hexdigest()
@@ -343,7 +365,7 @@ def monta_dto_usuarios(bolao):
         pontuacao_usuario = totaliza_pontuacao(str(usuario["_id"]), 'pontos')
         placares_exatos_usuario = totaliza_pontuacao(str(usuario["_id"]), 'placar_exato')
         vencedor_ou_empate_usuario = totaliza_pontuacao(str(usuario["_id"]), 'vencedor_ou_empate')
-        gols_de_um_time_usuario =totaliza_pontuacao(str(usuario["_id"]), 'gols_de_um_time')
+        gols_de_um_time_usuario = totaliza_pontuacao(str(usuario["_id"]), 'gols_de_um_time')
         lista_retorno.append({"nome": usuario["nome"],
                               "pontuacao": pontuacao_usuario,
                               "placar_exato": placares_exatos_usuario,
