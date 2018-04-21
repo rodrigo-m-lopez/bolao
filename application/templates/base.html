@@ -1,3 +1,4 @@
+{% from "_formhelpers.html" import render_flash %}
 <!doctype html>
 <html lang="en">
   <head>
@@ -22,13 +23,50 @@
 	{% block menu %}
 	{% endblock %}
 	<BR>
-    <div class="container">
-	  {% block content %}
-	  {% endblock %}
+	
+	<div class="container">		
+		<div id="myModal" class="modal fade" role="dialog">
+			<div class="modal-dialog">
+
+				<!-- Modal content-->
+				<div class="modal-content">
+					<div class="modal-header">
+						<button type="button" class="close" data-dismiss="modal">&times;</button>
+					</div>
+					<div class="modal-body">
+						{% with messages = get_flashed_messages() %}
+						{% if messages %}
+						<ul class=flashes>
+							{% for message in messages %}
+							<li>{{ message }}</li>
+							{% endfor %}
+						</ul>
+						{% endif %}
+						{% endwith %}
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+					</div>
+				</div>
+
+			</div>
+		</div>
+
+		{% block content %}
+		{% endblock %}
 	</div>
+	
 	{% block script %}{% endblock %}
 	
 	<script>
+	function r(f){/in/.test(document.readyState)?setTimeout(r,9,f):f()}
+	r(function(){
+		var messages = "{{ get_flashed_messages() }}";
+
+		if (typeof messages != 'undefined' && messages != '[]') {
+			$("#myModal").modal();
+		};
+	});
 	function montaAlerta(texto){
 		if (texto == ""){
 			return "";
