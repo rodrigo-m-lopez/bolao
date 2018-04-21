@@ -24,7 +24,7 @@ class Crawler:
 
         self.tbl_selecao = db.selecao
         self.tbl_jogo = db.jogo
-        self.tbl_usuario = db.usuario
+        self.tbl_aposta = db.aposta
         self.tbl_palpite = db.palpite
         self.tbl_pontuacao = db.pontuacao
 
@@ -84,21 +84,21 @@ class Crawler:
 
         return pontuacao, exato, resultado, gols_um_time
 
-    def calcula_pontos_usuarios(self, id_jogo, gols_mandante_real, gols_visitante_real):
+    def calcula_pontos_apostas(self, id_jogo, gols_mandante_real, gols_visitante_real):
         for palpite in self.tbl_palpite.find({'jogo': id_jogo}):
-            usuario = palpite['usuario']
-            usuario_banco = self.tbl_usuario.find_one({'_id': ObjectId(usuario)})
-            jogo_pago = usuario_banco['pago']
-            nome_usuario = usuario_banco['nome']
+            id_aposta = palpite['aposta']
+            aposta_banco = self.tbl_aposta.find_one({'_id': id_aposta})
+            jogo_pago = aposta_banco['pago']
+            nome_aposta = aposta_banco['nome']
             gols_mandante_palpite = palpite['gols_mandante']
             gols_visitante_palpite = palpite['gols_visitante']
             pontos, exato, resultado, gols_um_time = self.calcula_pontuacao(gols_mandante_real, gols_visitante_real,
                                                                             gols_mandante_palpite,
                                                                             gols_visitante_palpite)
             print('\tPalpite {3} {1} x {2} : {0} pontos'.format(pontos, gols_mandante_palpite, gols_visitante_palpite,
-                                                                nome_usuario))
+                                                                nome_aposta))
             if jogo_pago:
-                self.tbl_pontuacao.update_one({'usuario': usuario, 'jogo': id_jogo},
+                self.tbl_pontuacao.update_one({'aposta': id_aposta, 'jogo': id_jogo},
                                               {"$set": {'pontos': pontos,
                                                         'placar_exato': int(exato),
                                                         'vencedor_ou_empate': int(resultado),
@@ -146,14 +146,14 @@ class Crawler:
                         "url_rodada": self.url_relativa_rodada}
             self.tbl_jogo.insert_one(jogo_obj).inserted_id
         elif gols_mandante != gols_mandante_banco or gols_visitante != gols_visitante_banco:
-            id_jogo = str(jogo_banco['_id'])
+            id_jogo = jogo_banco['_id']
             self.tbl_jogo.update_one({"nome": nome_jogo},
                                      {"$set": {"gols_mandante": gols_mandante,
                                                "gols_visitante": gols_visitante}})
             print('Alteração de placar: {0} de {1} x {2} para {3} x {4}'.format(nome_jogo, gols_mandante_banco,
                                                                                 gols_visitante_banco, gols_mandante,
                                                                                 gols_visitante))
-            self.calcula_pontos_usuarios(id_jogo, gols_mandante, gols_visitante)
+            self.calcula_pontos_apostas(id_jogo, gols_mandante, gols_visitante)
 
     def executa(self):
         for secao_grupo in self.pagina.find_all('section', {'class': 'section-container'}):
