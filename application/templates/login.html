@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+
+{% block content %}
+        {% if not current_user.is_authenticated %}
+            <a href={{ url_for('oauth_authorize', provider='google') }}><img src="{{ url_for('static', filename='sign-in-with-google.png') }}" /></a>
+        {% endif %}
+{% endblock %}
+
+{% set title = 'Login' %}
