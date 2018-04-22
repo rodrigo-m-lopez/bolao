@@ -5,3 +5,5 @@ data/
 venv/
 \.idea/
 
+
+Project/__pycache__/

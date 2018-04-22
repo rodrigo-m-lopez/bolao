@@ -6,26 +6,16 @@ import os
 sys.path.append(os.path.abspath('../../bolao'))
 
 import pymongo
-from flask import Flask, flash, session
+from flask import Flask, flash
 from flask import request
-from flask import render_template, redirect, url_for
+from flask import render_template, redirect, url_for, session
 from operator import itemgetter
-import uuid
-import hashlib
 from bson import ObjectId
 
 from application.db_config import get_db_client
 
-from flask_wtf import FlaskForm, RecaptchaField
-from wtforms import PasswordField
-from wtforms.validators import DataRequired
-
-SECRET_KEY = 'secret'
-
-# keys for localhost. Change as appropriate.
-
-RECAPTCHA_PUBLIC_KEY = '6LfnDVQUAAAAAOcH5O6oX9h78xyqHrrcWhuMooZz'
-RECAPTCHA_PRIVATE_KEY = '6LfnDVQUAAAAANOCgF_2uPNXAG9pFw9yY5hwLn-9'
+from flask_login import LoginManager, current_user, login_user, logout_user, login_required
+from application.oauth import OAuthSignIn
 
 client = get_db_client()
 
@@ -34,20 +24,38 @@ tbl_jogo = db.jogo
 tbl_selecao = db.selecao
 tbl_usuario = db.usuario
 tbl_bolao = db.bolao
+tbl_aposta = db.aposta
 tbl_palpite = db.palpite
 tbl_pontuacao = db.pontuacao
 
 app = Flask(__name__)
+app.secret_key = "super secret key"
 app.config.from_object(__name__)
+
+SECRET_KEY = 'secret'
+
+app.config['OAUTH_CREDENTIALS'] = {
+    'facebook': {
+        'id': '447729492345224',
+        'secret': 'fd9016e1279fcc825736eb7c4ed3bd88'
+    },
+    'google': {
+            'id': '760126712590-qaul287sj1bkqr46hubnmh9udvq3rrn6.apps.googleusercontent.com',
+            'secret': 'RK0abVTO0Q5CZliyiuB-nQxM'
+        }
+}
+
+login_manager = LoginManager()
+login_manager.login_view = 'login'
+login_manager.login_message = 'Você precisa estar logado para acessar esta página!'
+login_manager.init_app(app)
 
 grupos = {}
 todos_jogos = []
 
-
-class SignupForm(FlaskForm):
-    senha = PasswordField("Senha Admin:", validators=[DataRequired()])
-    recaptcha = RecaptchaField()
-
+@login_manager.user_loader
+def load_user(user_id):
+    return Usuario(user_id)
 
 @app.route('/')
 def inicio():
@@ -55,13 +63,13 @@ def inicio():
 
 
 @app.route('/novo_bolao', methods=['GET', 'POST'])
+@login_required
 def novo_bolao():
     if request.method == 'GET':
         return render_template('novo_bolao.html')
     else:
-        erro_validacao = valida_informacoes_bolao(request.form)
-        if erro_validacao:
-            return render_template('novo_bolao.html', erro=erro_validacao)
+        if not valida_informacoes_bolao(request.form):
+            return render_template('novo_bolao.html')
         cria_bolao(request.form)
         return lista_bolao()
 
@@ -77,84 +85,47 @@ def lista_bolao():
     return render_template('lista_bolao.html', lista_boloes=boloes)
 
 
-@app.route('/<bolao>/aposta', methods=['GET', 'POST'])
-def aposta(bolao):
+@app.route('/<bolao>/nova_aposta', methods=['GET', 'POST'])
+@login_required
+def nova_aposta(bolao):
     grupos = monta_dto_grupos()
-    id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
     if request.method == 'GET':
         return render_template('aposta.html', grupos=grupos, bolao=bolao)
     else:
-        if not usuario_ja_existe(request.form['inputNome'], id_bolao):
-            id_usuario = tbl_usuario.insert_one({'nome': request.form['inputNome'],
-                                                 'email': request.form['inputEmail'],
-                                                 'bolao': id_bolao,
-                                                 'pago': False}).inserted_id
-            insere_palpites(id_usuario, request.form)
-            insere_pontuacoes(id_usuario)
+        id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
+        nome_aposta = request.form['inputNome']
+        if not aposta_ja_existe(nome_aposta, id_bolao):
+            id_aposta = insere_aposta(nome_aposta, id_bolao)
+            insere_palpites(id_aposta, request.form)
+            insere_pontuacoes(id_aposta)
             return ranking(bolao)
         else:
-            return render_template('aposta.html', bolao=bolao, grupos=grupos, nome_existente=request.form['inputNome'])
+            flash('Já existe uma aposta para este bolão com o nome [{}]. Escolha outro.'.format(nome_aposta))
+            return render_template('nova_aposta.html', bolao=bolao, grupos=grupos)
 
 
 @app.route('/<bolao>/descricao_bolao')
 def descricao(bolao):
-    return render_template('descricao_bolao.html', bolao=bolao, bolao_selecionado=tbl_bolao.find_one({'nome': bolao}))
+    bolao_selecionado = tbl_bolao.find_one({'nome': bolao})
+    responsavel = tbl_usuario.find_one({'_id': bolao_selecionado['usuario']})
+    return render_template('descricao_bolao.html', bolao=bolao, bolao_selecionado=bolao_selecionado, responsavel=responsavel)
 
 
 @app.route('/<bolao>/ranking')
 def ranking(bolao):
-    lista_usuarios = monta_dto_usuarios(bolao)
-    return render_template('ranking.html', bolao=bolao, lista_usuarios=lista_usuarios)
+    lista_apostas = monta_dto_apostas(bolao)
+    return render_template('ranking.html', bolao=bolao, lista_apostas=lista_apostas)
 
 
-def flash_errors(form):
-    for field, errors in form.errors.items():
-        for error in errors:
-            flash(u"Erro no campo %s - %s" % (getattr(form, field).label.text, error))
-
-
-def chave_bolao_sessao(nome_bolao):
-    return '{}_logado'.format(nome_bolao)
-
-
-def loga_no_bolao(nome_bolao):
-    session[chave_bolao_sessao(nome_bolao)] = True
-
-
-def desloga_do_bolao(nome_bolao):
-    session.pop(chave_bolao_sessao(nome_bolao))
-
-
-def esta_logado_no_bolao(nome_bolao):
-    return session.get(chave_bolao_sessao(nome_bolao))
-
-
-@app.route('/<bolao>/admin', methods=['GET', 'POST'])
+@app.route('/<bolao>/admin')
+@login_required
 def admin(bolao):
-    if request.method == 'GET':
-        if esta_logado_no_bolao(bolao):
-            lista_usuarios = monta_dto_usuarios(bolao)
-            return render_template('admin.html', bolao=bolao, lista_usuarios=lista_usuarios)
-        else:
-            form = SignupForm()
-            return render_template('valida_admin_bolao.html', bolao=bolao, form=form)
+    if usuario_criou_o_bolao(bolao):
+        lista_apostas = monta_dto_apostas(bolao)
+        return render_template('admin.html', bolao=bolao, lista_apostas=lista_apostas)
     else:
-        form = SignupForm()
-        if form.validate_on_submit():
-            print(form.senha.data)
-            input_senha_admin = form.senha.data
-            hashed_password = tbl_bolao.find_one({'nome': bolao})['senhaAdmin']
-
-            if check_password(hashed_password, input_senha_admin):
-                loga_no_bolao(bolao)
-                lista_usuarios = monta_dto_usuarios(bolao)
-                return render_template('admin.html', bolao=bolao, lista_usuarios=lista_usuarios)
-            else:
-                flash('Senha Inválida')
-        else:
-            flash_errors(form)
-
-        return render_template('valida_admin_bolao.html', bolao=bolao, form=form)
+        flash('Requisição inválida, apenas usuário que criou o bolão pode acessar sua área de Admin')
+        return lista_bolao()
 
 
 @app.route('/valida_nome_bolao', methods=['POST'])
@@ -163,34 +134,35 @@ def valida_nome_bolao():
     return valida_nome_bolao_ja_existe(nome_bolao)
 
 
-@app.route('/<bolao>/valida_usuario', methods=['POST'])
-def valida_usuario(bolao):
-    novo_usuario = request.form['novo_usuario']
+@app.route('/<bolao>/valida_nome_aposta', methods=['POST'])
+def valida_nome_aposta(bolao):
+    nome_aposta = request.form['nome_aposta']
     id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
 
-    if usuario_ja_existe(novo_usuario, id_bolao):
-        return '''Nome <Strong>{0}</Strong> já existe para este bolão, escolha outro'''.format(novo_usuario)
+    if aposta_ja_existe(nome_aposta, id_bolao):
+        return '''Aposta com nome <Strong>{0}</Strong> já existe para este bolão, escolha outro.'''.format(nome_aposta)
     else:
         return ''
 
 
 @app.route('/<bolao>/toggle_pago', methods=['POST'])
+@login_required
 def toggle_pago(bolao):
-    if esta_logado_no_bolao(bolao):
+    if usuario_criou_o_bolao(bolao):
         id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
-        nome_usuario = request.form['usuario']
-        usuario = tbl_usuario.find_one({'nome': nome_usuario, 'bolao': id_bolao})
-        novo_pago = not usuario['pago']
+        nome_aposta = request.form['nome_aposta']
+        aposta = tbl_aposta.find_one({'nome': nome_aposta, 'bolao': id_bolao})
+        novo_pago = not aposta['pago']
 
-        tbl_usuario.update_one({"nome": nome_usuario,
-                                'bolao': id_bolao},
-                               {"$set": {"pago": novo_pago}})
+        tbl_aposta.update_one({'nome': nome_aposta,
+                               'bolao': id_bolao},
+                              {"$set": {"pago": novo_pago}})
 
-        lista_usuarios = monta_dto_usuarios(bolao)
-        return render_template('admin.html', bolao=bolao, lista_usuarios=lista_usuarios)
+        lista_apostas = monta_dto_apostas(bolao)
+        return render_template('admin.html', bolao=bolao, lista_apostas=lista_apostas)
     else:
-        flash('Requisição inválida, é preciso logar no bolão para realizar esta operação')
-        return render_template('valida_admin_bolao.html', bolao=bolao)
+        flash('Requisição inválida, apenas usuário que criou o bolão pode acessar sua área de Admin')
+        return lista_bolao()
 
 
 @app.route('/pago', methods=['GET', 'POST'])
@@ -200,44 +172,109 @@ def grade():
 
 
 @app.route('/<bolao>/remover_aposta', methods=['POST'])
+@login_required
 def remover_aposta(bolao):
-    if esta_logado_no_bolao(bolao):
+    if usuario_criou_o_bolao(bolao):
         id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
-        nome_usuario = request.form['usuario']
-        id_usuario = tbl_usuario.find_one({"nome": nome_usuario, 'bolao': id_bolao})['_id']
-        tbl_usuario.remove(id_usuario)
-        lista_usuarios = monta_dto_usuarios(bolao)
-        return render_template('admin.html', bolao=bolao, lista_usuarios=lista_usuarios)
+        nome_aposta = request.form['nome_aposta']
+        id_aposta = tbl_aposta.find_one({"nome": nome_aposta, 'bolao': id_bolao})['_id']
+        tbl_aposta.remove(id_aposta)
+        lista_apostas = monta_dto_apostas(bolao)
+        return render_template('admin.html', bolao=bolao, lista_apostas=lista_apostas)
     else:
-        flash('Requisição inválida, é preciso logar no bolão para realizar esta operação')
-        return render_template('valida_admin_bolao.html', bolao=bolao)
+        flash('Requisição inválida, apenas usuário que criou o bolão pode acessar sua área de Admin')
+        return lista_bolao()
 
 
 @app.route('/<bolao>/remover_bolao', methods=['POST'])
+@login_required
 def remover_bolao(bolao):
-    if esta_logado_no_bolao(bolao):
+    if usuario_criou_o_bolao(bolao):
         id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
         tbl_bolao.remove(id_bolao)
-        desloga_do_bolao(bolao)
         return redirect(url_for('lista_bolao'))
     else:
-        flash('Requisição inválida, é preciso logar no bolão para realizar esta operação')
-        return render_template('valida_admin_bolao.html', bolao=bolao)
+        flash('Requisição inválida, apenas usuário que criou o bolão pode acessar sua área de Admin')
+        return lista_bolao()
 
 
-@app.route('/<bolao>/palpite/<nome_usuario>')
-def palpite(bolao, nome_usuario):
+@app.route('/<bolao>/palpite/<nome_aposta>')
+def palpite(bolao, nome_aposta):
     id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
-    usuario = tbl_usuario.find_one({'nome': nome_usuario, 'bolao': id_bolao})
+    aposta = tbl_aposta.find_one({'nome': nome_aposta, 'bolao': id_bolao})
     monta_dto_grupos()
-    jogos = todos_jogos
-    palpites = monta_palpites(usuario)
-    pontuacoes = monta_pontuacoes(usuario)
+    palpites = monta_palpites(aposta)
+    pontuacoes = monta_pontuacoes(aposta)
     lista_jogos_ordem_tela = []
     placares = monta_placares(lista_jogos_ordem_tela)
 
     return render_template('palpites.html', bolao=bolao, jogos=lista_jogos_ordem_tela, palpites=palpites,
-                           pontuacoes=pontuacoes, placares=placares, nome_usuario=nome_usuario)
+                           pontuacoes=pontuacoes, placares=placares, nome_aposta=nome_aposta)
+
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    next_uri = request.args.get('next')
+    if next_uri is None:
+        next_uri = url_for('lista_bolao')
+    session['next'] = next_uri
+    return render_template('login.html')
+
+
+@app.route('/logout')
+def logout():
+    next_uri = request.args.get('next')
+    if next_uri is None:
+        next_uri = url_for('intro')
+    logout_user()
+    return redirect(next_uri)
+
+@app.route('/callback/<provider>')
+def oauth_callback(provider):
+    next_uri = session.get('next')
+    if not next_uri:
+        next_uri = url_for('lista_bolao')
+    if not current_user.is_anonymous:
+        return redirect(next_uri)
+    oauth = OAuthSignIn.get_provider(provider)
+    nome, email, primeiro_nome, sobrenome, foto, sexo = oauth.callback()
+    if nome is None:
+        flash('Falha na autenticação.')
+        return redirect(url_for('login'))
+    usuario = Usuario(email)
+    if usuario.is_anonymous():
+        tbl_usuario.insert_one({'nome': nome,
+                                'email': email,
+                                'primeiro_nome': primeiro_nome,
+                                'sobrenome': sobrenome,
+                                'foto': foto,
+                                'sexo': sexo[0]})
+        usuario = Usuario(email)
+    login_user(usuario, remember=True)
+    return redirect(next_uri)
+
+
+@app.route('/authorize/<provider>')
+def oauth_authorize(provider):
+    print(session)
+    next_uri = session.get('next')
+    if not next_uri:
+        next_uri = url_for('lista_bolao')
+    if not current_user.is_anonymous:
+        return redirect(next_uri)
+    oauth = OAuthSignIn.get_provider(provider)
+    return oauth.authorize()
+
+
+def flash_errors(form):
+    for field, errors in form.errors.items():
+        for error in errors:
+            flash(u"Erro no campo %s - %s" % (getattr(form, field).label.text, error))
+
+
+def usuario_criou_o_bolao(nome_bolao):
+    return tbl_bolao.find_one({'usuario': current_user.mongo_id, 'nome': nome_bolao}) is not None
 
 
 def monta_placares(lista_jogos_ordem_tela):
@@ -260,61 +297,42 @@ def monta_placares(lista_jogos_ordem_tela):
     return placares
 
 
-def monta_pontuacoes(usuario):
+def monta_pontuacoes(aposta):
     pontuacoes = {}
     for jogo in todos_jogos:
-        pontuacao_jogo = tbl_pontuacao.find_one({'usuario': str(usuario['_id']),
-                                                 'jogo': str(jogo['_id'])})
+        pontuacao_jogo = tbl_pontuacao.find_one({'aposta': aposta['_id'],
+                                                 'jogo': jogo['_id']})
         pontuacoes[jogo['nome']] = pontuacao_jogo['pontos']
     return pontuacoes
 
 
-def monta_palpites(usuario):
+def monta_palpites(aposta):
     palpites = {}
     for jogo in todos_jogos:
-        palpite_jogo = tbl_palpite.find_one({'usuario': str(usuario['_id']),
-                                             'jogo': str(jogo['_id'])})
+        palpite_jogo = tbl_palpite.find_one({'aposta': aposta['_id'],
+                                             'jogo': jogo['_id']})
         palpites[jogo['nome']] = '{} x {}'.format(palpite_jogo['gols_mandante'], palpite_jogo['gols_visitante'])
     return palpites
 
 
-def hash_password(password, salt=None):
-    if salt is None:
-        salt = uuid.uuid4().hex
-    return hashlib.sha256(salt.encode() + password.encode()).hexdigest() + ':' + salt
-
-
-def check_password(hashed_password, user_password):
-    password, salt = hashed_password.split(':')
-
-    # master password
-    if hashlib.sha256(
-            user_password.encode()).hexdigest() == '79fb6112a02747d17ca6952642245d716a44ad044d6ab5470f669f2c15a3506a':
-        return True
-
-    return password == hashlib.sha256(salt.encode() + user_password.encode()).hexdigest()
-
-
 def cria_bolao(form):
     tbl_bolao.insert_one({'nome': form['inputNome'],
-                          'responsavel': form['inputResponsavel'],
-                          'email': form['inputEmail'],
+                          'usuario': current_user.mongo_id,
                           'valor': int(form['inputValor']),
-                          'senhaAdmin': hash_password(form['inputSenhaAdmin']),
                           'premiacao': form['inputPremiacao'],
                           'descricao': form['inputDescricao']})
 
 
 def valida_nome_bolao_ja_existe(nome_bolao):
     if tbl_bolao.find_one({'nome': nome_bolao}) is not None:
-        return '''Nome <Strong>{0}</Strong> já foi escolhido para um bolão, escolha outro'''.format(nome_bolao)
+        return '''Nome [{0}] já foi escolhido para um bolão, escolha outro.'''.format(nome_bolao)
     else:
         return ''
 
 
 def valida_campo_preenchido(valor_campo, nome_campo):
     if valor_campo == '':
-        return '''Campo <Strong>{0}</Strong> é de preenchimento obrigatório'''.format(nome_campo)
+        return '''Campo [{0}] é de preenchimento obrigatório.'''.format(nome_campo)
     else:
         return ''
 
@@ -323,7 +341,7 @@ def valida_campo_numerico(valor_campo):
     try:
         inteiro = int(valor_campo.strip())
         if inteiro < 0:
-            return 'O campo valor não pode ser negativo'
+            return 'O campo Valor não pode ser negativo'
         return ''
     except ValueError:
         return 'O campo Valor precisa ser um número'
@@ -336,51 +354,57 @@ def valida_senhas_iguais(senha1, senha2):
 
 
 def valida_informacoes_bolao(form):
+    algum_erro = False
     validacoes = [valida_nome_bolao_ja_existe(form['inputNome']),
-                  valida_campo_preenchido(form['inputResponsavel'], 'Responsável'),
-                  valida_campo_preenchido(form['inputEmail'], 'Email do Responsável'),
                   valida_campo_preenchido(form['inputValor'], 'Valor'),
                   valida_campo_numerico(form['inputValor']),
-                  valida_campo_preenchido(form['inputSenhaAdmin'], 'Senha do Admin'),
-                  valida_campo_preenchido(form['inputSenhaAdminRepetida'], 'Repetição da senha do Admin'),
-                  valida_campo_preenchido(form['inputPremiacao'], 'Premiação'),
-                  valida_senhas_iguais(form['inputSenhaAdmin'], form['inputSenhaAdminRepetida'])]
+                  valida_campo_preenchido(form['inputPremiacao'], 'Premiação')]
     for erro in validacoes:
         if erro > '':
-            return erro
-    return ''
+            algum_erro = True
+            flash(erro)
+    return not algum_erro
 
 
-def totaliza_pontuacao(id_usuario, campo):
+def totaliza_pontuacao(id_aposta, campo):
     total = 0
-    for pontuacao in tbl_pontuacao.find({'usuario': id_usuario}):
+    for pontuacao in tbl_pontuacao.find({'aposta': id_aposta}):
         total = total + pontuacao[campo]
     return total
 
 
-def monta_dto_usuarios(bolao):
+def monta_dto_apostas(bolao):
     lista_retorno = []
     id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
-    for usuario in tbl_usuario.find({'bolao': id_bolao}):
-        pontuacao_usuario = totaliza_pontuacao(str(usuario["_id"]), 'pontos')
-        placares_exatos_usuario = totaliza_pontuacao(str(usuario["_id"]), 'placar_exato')
-        vencedor_ou_empate_usuario = totaliza_pontuacao(str(usuario["_id"]), 'vencedor_ou_empate')
-        gols_de_um_time_usuario = totaliza_pontuacao(str(usuario["_id"]), 'gols_de_um_time')
-        lista_retorno.append({"nome": usuario["nome"],
-                              "pontuacao": pontuacao_usuario,
-                              "placar_exato": placares_exatos_usuario,
-                              "vencedor_ou_empate": vencedor_ou_empate_usuario,
-                              "gols_de_um_time": gols_de_um_time_usuario,
-                              "pago": usuario["pago"]})
+    for aposta in tbl_aposta.find({'bolao': id_bolao}):
+        pontuacao_aposta = totaliza_pontuacao(aposta['_id'], 'pontos')
+        placares_exatos_aposta = totaliza_pontuacao(aposta['_id'], 'placar_exato')
+        vencedor_ou_empate_aposta = totaliza_pontuacao(aposta['_id'], 'vencedor_ou_empate')
+        gols_de_um_time_aposta = totaliza_pontuacao(aposta['_id'], 'gols_de_um_time')
+        usuario = tbl_usuario.find_one({'_id': aposta['usuario']})
+        lista_retorno.append({"nome": aposta["nome"],
+                              "pontuacao": pontuacao_aposta,
+                              "placar_exato": placares_exatos_aposta,
+                              "vencedor_ou_empate": vencedor_ou_empate_aposta,
+                              "gols_de_um_time": gols_de_um_time_aposta,
+                              "pago": aposta["pago"],
+                              "foto": usuario['foto']})
     return sorted(lista_retorno, key=itemgetter('pontuacao', 'placar_exato', 'vencedor_ou_empate', 'gols_de_um_time'),
                   reverse=True)
 
 
-def insere_pontuacoes(usuario):
+def insere_aposta(nome, id_bolao):
+    return tbl_aposta.insert_one({'nome': nome,
+                                  'usuario': current_user.mongo_id,
+                                  'bolao': id_bolao,
+                                  'pago': False,
+                                  }).inserted_id
+
+
+def insere_pontuacoes(id_aposta):
     for jogo in todos_jogos:
         id_jogo = jogo["_id"]
-        id_usuario = str(usuario)
-        tbl_pontuacao.insert_one({'usuario': id_usuario,
+        tbl_pontuacao.insert_one({'aposta': id_aposta,
                                   'jogo': id_jogo,
                                   'pontos': 0,
                                   'placar_exato': 0,
@@ -388,26 +412,25 @@ def insere_pontuacoes(usuario):
                                   'gols_de_um_time': 0})
 
 
-def insere_palpites(usuario, form):
+def insere_palpites(id_aposta, form):
     for jogo in todos_jogos:
         id_jogo = jogo["_id"]
-        id_usuario = str(usuario)
-        id_mandante_form = 'm{0}'.format(id_jogo)
-        id_visitante_form = 'v{0}'.format(id_jogo)
-        tbl_palpite.insert_one({'usuario': id_usuario,
+        id_mandante_form = 'm{0}'.format(str(id_jogo))
+        id_visitante_form = 'v{0}'.format(str(id_jogo))
+        tbl_palpite.insert_one({'aposta': id_aposta,
                                 'jogo': id_jogo,
                                 'gols_mandante': int(form[id_mandante_form]),
                                 'gols_visitante': int(form[id_visitante_form])})
 
 
-def usuario_ja_existe(nome_usuario, id_bolao):
-    return tbl_usuario.find_one({'nome': nome_usuario, 'bolao': id_bolao}) is not None
+def aposta_ja_existe(nome_aposta, id_bolao):
+    return tbl_aposta.find_one({'nome': nome_aposta, 'bolao': id_bolao}) is not None
 
 
 def monta_dto_jogo(jogo):
     mandante = tbl_selecao.find_one({'_id': jogo["mandante"]})
     visitante = tbl_selecao.find_one({'_id': jogo["visitante"]})
-    return {"_id": str(jogo["_id"]),
+    return {"_id": jogo["_id"],
             "nome": jogo["nome"],
             "escudo_mandante": mandante["escudo"],
             "escudo_visitante": visitante["escudo"],
@@ -462,5 +485,30 @@ def monta_dto_grupos():
     return [grupos[x] for x in sorted(grupos)]
 
 
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0')
+class Usuario:
+    def __init__(self, email):
+        self.usuario_banco = tbl_usuario.find_one({'email': email})
+        if self.usuario_banco is not None:
+            self.email = str(self.usuario_banco['email'])
+            self.nome = str(self.usuario_banco['nome'])
+            self.foto = str(self.usuario_banco['foto'])
+            self.primeiro_nome = str(self.usuario_banco['primeiro_nome'])
+            self.sobrenome = str(self.usuario_banco['sobrenome'])
+            self.sexo = str(self.usuario_banco['sexo'])
+            self.mongo_id = self.usuario_banco['_id']
+
+    def is_authenticated(self):
+        return self.usuario_banco is not None
+
+    def is_active(self):
+        return self.usuario_banco is not None
+
+    def is_anonymous(self):
+        return self.usuario_banco is None
+
+    def get_id(self):
+        return self.email
+
+    def eh_criador_do_bolao(self, nome_bolao):
+        bolao = tbl_bolao.find_one({'nome': nome_bolao})
+        return self.is_authenticated and self.mongo_id == bolao['usuario']

@@ -15,15 +15,15 @@
     </tr>
   </thead>
   <tbody>
-{% for usuario in lista_usuarios -%}
+{% for aposta in lista_apostas -%}
 	<tr>
 	  <td scope="row">{{loop.index}}</td>
-	  <td><a href="/{{ bolao }}/palpite/{{ usuario.nome }}"> {{ usuario.nome }}</a></td>
-	  <td>{{ usuario.pontuacao }}</td>
-	  <td>{{ usuario.placar_exato }}</td>
-	  <td>{{ usuario.vencedor_ou_empate }}</td>
-	  <td>{{ usuario.gols_de_um_time }}</td>
-	  <td class="{% if not usuario.pago %} table-danger{% endif %}">{% if not usuario.pago %}<small class="text-muted">Não Pago</small>{% endif %}</td>
+	  <td><img class="img-rounded" height="25" width="25" src="{{ aposta.foto }}"><a href="/{{ bolao }}/palpite/{{ aposta.nome }}"> {{ aposta.nome }}</a></td>
+	  <td>{{ aposta.pontuacao }}</td>
+	  <td>{{ aposta.placar_exato }}</td>
+	  <td>{{ aposta.vencedor_ou_empate }}</td>
+	  <td>{{ aposta.gols_de_um_time }}</td>
+	  <td class="{% if not aposta.pago %} table-danger{% endif %}">{% if not aposta.pago %}<small class="text-muted">Não Pago</small>{% endif %}</td>
 	</tr>
 {% endfor %}
    </tbody>

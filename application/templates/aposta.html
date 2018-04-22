@@ -3,14 +3,11 @@
 {% set title = 'Aposta' %}
 
 {% block content %}
-<form method="POST" action="/{{ bolao }}/aposta">
+<form method="POST" action="/{{ bolao }}/nova_aposta">
 <div class="form-group" >
-	<input type="text" class="form-control" onblur="validaNome()" style="width: 52rem;" name="inputNome" id="inputNome" placeholder="Nome" required>
+	<input type="text" class="form-control" onblur="validaNome()" style="width: 52rem;" name="inputNome" id="inputNome" placeholder="Nome da Aposta" required>
 	<div id="erro"></div>
 </div>
-<div class="form-group">
-	<input type="email" class="form-control" style="width: 52rem;" name="inputEmail" id="inputEmail" aria-describedby="emailHelp" placeholder="Email" required>
-</div>	
 {% for grupo in grupos -%}
 <div class="card" style="width: 52rem;">
   <div class="card-body">
@@ -58,9 +55,9 @@
 		  }
 		}
 	  };
-	  xhttp.open("POST", "/{{ bolao }}/valida_usuario", true);
+	  xhttp.open("POST", "/{{ bolao }}/valida_nome_aposta", true);
 	  xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-	  xhttp.send("novo_usuario=" + document.getElementById("inputNome").value);
+	  xhttp.send("nome_aposta=" + document.getElementById("inputNome").value);
 	}
 </script>
 
