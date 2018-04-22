@@ -40,18 +40,18 @@
         </tr>
       </thead>
       <tbody>
-    {% for usuario in lista_usuarios -%}
+    {% for aposta in lista_apostas -%}
         <tr>
           <td scope="row">{{loop.index}}</td>
-          <td>{{ usuario.nome }}</td>
+          <td>{{ aposta.nome }}</td>
 
-          {% if not usuario.pago %}
-          <td><button type="button" class="btn btn-primary btn-sm" name ="{{ usuario.nome }}" onclick="togglePago(this)">Marcar como pago</button></td>
+          {% if not aposta.pago %}
+          <td><button type="button" class="btn btn-primary btn-sm" name ="{{ aposta.nome }}" onclick="togglePago(this)">Marcar como pago</button></td>
           {% else %}
-          <td><button type="button" class="btn btn-success btn-sm" name ="{{ usuario.nome }}" onclick="togglePago(this)">Pago</button></td>
+          <td><button type="button" class="btn btn-success btn-sm" name ="{{ aposta.nome }}" onclick="togglePago(this)">Pago</button></td>
           {% endif %}
 
-          <td><button type="button" class="btn btn-danger btn-sm" name ="{{ usuario.nome }}" onclick="removerAposta(this)">Remover Aposta</button></td>
+          <td><button type="button" class="btn btn-danger btn-sm" name ="{{ aposta.nome }}" onclick="removerAposta(this)">Remover Aposta</button></td>
 
         </tr>
     {% endfor %}
@@ -75,7 +75,7 @@
 					document.close();
 				}
 			};
-		  xhttp.send("usuario=" + sender.name );
+		  xhttp.send("nome_aposta=" + sender.name );
 		}
 	}
 
@@ -90,7 +90,7 @@
                 document.close();
             }
         };
-        xhttp.send("usuario=" + sender.name);
+        xhttp.send("nome_aposta=" + sender.name);
     }
 </script>
 {% endblock %}
