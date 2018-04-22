@@ -511,3 +511,7 @@ class Usuario:
     def eh_criador_do_bolao(self, nome_bolao):
         bolao = tbl_bolao.find_one({'nome': nome_bolao})
         return self.is_authenticated and self.mongo_id == bolao['usuario']
+
+
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0')
