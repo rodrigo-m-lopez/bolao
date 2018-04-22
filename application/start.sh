@@ -14,5 +14,9 @@ crontab crawler_cron
 service cron start
 echo _    Starting Cron...OK!
 
+echo "Environment variables..."
+export
+echo "Environment variables...OK!"
+
 echo _Starting...OK!
 gunicorn -w 1 -b :8000 app:app

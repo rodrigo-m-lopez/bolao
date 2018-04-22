@@ -28,20 +28,19 @@ tbl_aposta = db.aposta
 tbl_palpite = db.palpite
 tbl_pontuacao = db.pontuacao
 
-app = Flask(__name__)
-app.secret_key = "super secret key"
-app.config.from_object(__name__)
+if 'GOOGLE_OAUTH_CREDENTIAL_ID' not in os.environ or 'GOOGLE_OAUTH_CREDENTIAL_SECRET' not in os.environ:
+    raise Exception('Please create two environment variables for google oauth: ' \
+                    'GOOGLE_OAUTH_CREDENTIAL_ID and GOOGLE_OAUTH_CREDENTIAL_SECRET')
 
-SECRET_KEY = 'secret'
+app = Flask(__name__)
+app.secret_key = os.environ['GOOGLE_OAUTH_CREDENTIAL_SECRET'] # can be any secret value
+app.config.from_object(__name__)
+SECRET_KEY = os.environ['GOOGLE_OAUTH_CREDENTIAL_SECRET'] # can be any secret value
 
 app.config['OAUTH_CREDENTIALS'] = {
-    'facebook': {
-        'id': '447729492345224',
-        'secret': 'fd9016e1279fcc825736eb7c4ed3bd88'
-    },
     'google': {
-            'id': '760126712590-qaul287sj1bkqr46hubnmh9udvq3rrn6.apps.googleusercontent.com',
-            'secret': 'RK0abVTO0Q5CZliyiuB-nQxM'
+            'id': os.environ['GOOGLE_OAUTH_CREDENTIAL_ID'],
+            'secret': os.environ['GOOGLE_OAUTH_CREDENTIAL_SECRET']
         }
 }
 

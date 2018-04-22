@@ -24,6 +24,7 @@ services:
     container_name: app
     image: app
     build: application/.
+    env_file: application/bolao.secrets.env
     restart: always
     expose:
     - "8000"
