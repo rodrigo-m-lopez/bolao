@@ -24,6 +24,7 @@ services:
     container_name: app
     image: app
     build: application/.
+    env_file: application/bolao.secrets.env
     restart: always
     expose:
     - "8000"
@@ -49,7 +50,7 @@ services:
 # run this compose with:
 # 
 # cd /home/ec2-user/bolao/src
-# docker-compose up -d
+# docker-compose up --build -d
 #
 # usefull commands:
 #
