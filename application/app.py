@@ -249,7 +249,7 @@ def oauth_callback(provider):
                                 'primeiro_nome': primeiro_nome,
                                 'sobrenome': sobrenome,
                                 'foto': foto,
-                                'sexo': sexo[0]})
+                                'sexo': None if sexo is None else sexo[0]})
         usuario = Usuario(email)
     login_user(usuario, remember=True)
     return redirect(next_uri)

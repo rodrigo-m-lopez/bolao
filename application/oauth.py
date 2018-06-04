@@ -64,12 +64,13 @@ class GoogleSignIn(OAuthSignIn):
                 decoder = json.loads
         )
         me = oauth_session.get('').json()
-        return (me['name'],
-                me['email'],
-                me['given_name'],
-                me['family_name'],
-                me['picture'],
-                me['gender'])
+        print(me)
+        return (me.get('name'),
+                me.get('email'),
+                me.get('given_name'),
+                me.get('family_name'),
+                me.get('picture'),
+                me.get('gender'))
 
 class FacebookSignIn(OAuthSignIn):
     def __init__(self):
