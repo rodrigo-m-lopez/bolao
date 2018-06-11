@@ -88,6 +88,8 @@ class Crawler:
         for palpite in self.tbl_palpite.find({'jogo': id_jogo}):
             id_aposta = palpite['aposta']
             aposta_banco = self.tbl_aposta.find_one({'_id': id_aposta})
+            if aposta_banco is None:
+                continue
             jogo_pago = aposta_banco['pago']
             nome_aposta = aposta_banco['nome']
             gols_mandante_palpite = palpite['gols_mandante']
