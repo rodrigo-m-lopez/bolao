@@ -13,6 +13,11 @@
 		body {
 		   background-image: url("{{url_for('static', filename='back_image.png')}}");
 		}
+		input::-webkit-outer-spin-button,
+		input::-webkit-inner-spin-button {
+			-webkit-appearance: none;
+			margin: 0;
+		}
 	</style>
 
 	{% block css %}{% endblock %}

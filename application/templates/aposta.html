@@ -21,11 +21,11 @@
 					<div class="col-3" style="text-align: right;">
 						{{ jogo.nome_mandante }}
 						<img itemprop="image" src="{{ jogo.escudo_mandante}}" width="30" height="30">
-						<input id="{{ jogo.id_input_mandante }}" type="text" class="form-control" name="{{ jogo.id_input_mandante }}" style="width:42px;height:30px;display:inline" required>						
+						<input id="{{ jogo.id_input_mandante }}" type="number" pattern="[0-9]*" class="form-control" name="{{ jogo.id_input_mandante }}" style="width:42px;height:30px;display:inline" required>						
 					</div>
 					<div class="col-1" style="text-align: center;">x</div>
 					<div class="col-3" style="text-align: left;">
-						<input id="{{ jogo.id_input_visitante }}" type="text" class="form-control" name="{{ jogo.id_input_visitante }}" style="width:42px;height:30px;display:inline" required>
+						<input id="{{ jogo.id_input_visitante }}" type="number" pattern="[0-9]*" class="form-control" name="{{ jogo.id_input_visitante }}" style="width:42px;height:30px;display:inline" required>
 						<img itemprop="image" src="{{ jogo.escudo_visitante}}" width="30" height="30">
 						{{ jogo.nome_visitante }}
 					</div>
