@@ -18,7 +18,7 @@
 {% for aposta in lista_apostas -%}
 	<tr>
 	  <td scope="row">{{loop.index}}</td>
-	  <td><a href="/{{ bolao }}/palpite/{{ aposta.nome }}"> {{ aposta.nome }}</a></td>
+	  <td><a href="/{{ bolao }}/palpite/{{ aposta.nome }}#"> {{ aposta.nome }}</a></td>
 	  <td>{{ aposta.pontuacao }}</td>
 	  <td>{{ aposta.placar_exato }}</td>
 	  <td>{{ aposta.vencedor_ou_empate }}</td>
