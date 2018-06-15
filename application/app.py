@@ -381,15 +381,32 @@ def monta_dto_apostas(bolao):
         vencedor_ou_empate_aposta = totaliza_pontuacao(aposta['_id'], 'vencedor_ou_empate')
         gols_de_um_time_aposta = totaliza_pontuacao(aposta['_id'], 'gols_de_um_time')
         usuario = tbl_usuario.find_one({'_id': aposta['usuario']})
-        lista_retorno.append({"nome": aposta["nome"],
+        lista_retorno.append({"posicao": None,
+                              "nome": aposta["nome"],
                               "pontuacao": pontuacao_aposta,
                               "placar_exato": placares_exatos_aposta,
                               "vencedor_ou_empate": vencedor_ou_empate_aposta,
                               "gols_de_um_time": gols_de_um_time_aposta,
                               "pago": aposta["pago"],
                               "foto": usuario['foto']})
-    return sorted(lista_retorno, key=itemgetter('pontuacao', 'placar_exato', 'vencedor_ou_empate', 'gols_de_um_time'),
+    lista_ordenada = sorted(lista_retorno, key=itemgetter('pontuacao', 'placar_exato', 'vencedor_ou_empate', 'gols_de_um_time'),
                   reverse=True)
+
+    posicao = 1
+    posicao_anterior = posicao
+    anterior = (-1, -1, -1, -1)
+    for item in lista_ordenada:
+        atual = (item['pontuacao'], item['placar_exato'], item['vencedor_ou_empate'], item['gols_de_um_time'])
+        if anterior == atual:
+            item['posicao'] = posicao_anterior
+        else:
+            item['posicao'] = posicao
+
+        anterior = atual
+        posicao_anterior = item['posicao']
+        posicao += 1
+
+    return lista_ordenada
 
 
 def insere_aposta(nome, id_bolao):
