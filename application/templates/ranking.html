@@ -17,7 +17,7 @@
   <tbody>
 {% for aposta in lista_apostas -%}
 	<tr>
-	  <td scope="row">{{loop.index}}</td>
+	  <td scope="row">{{ aposta.posicao }}</td>
 	  <td><a href="/{{ bolao }}/palpite/{{ aposta.nome }}#"> {{ aposta.nome }}</a></td>
 	  <td>{{ aposta.pontuacao }}</td>
 	  <td>{{ aposta.placar_exato }}</td>
