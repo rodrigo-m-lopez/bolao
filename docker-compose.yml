@@ -58,6 +58,6 @@ services:
 # docker-compose rm                                     ->  Delete all containers
 # docker-compose ps                                     ->  See which containers are running
 # 
-# docker system prune --all --volumes --force           ->  Delete EVERYTHING: containers, networks, etc
+# docker system prune --all --volumes --force           ->  Delete EVERYTHING: containers, networks, volumes, etc
 #
 
