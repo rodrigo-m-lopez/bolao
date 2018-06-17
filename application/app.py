@@ -28,6 +28,7 @@ tbl_bolao = db.bolao
 tbl_aposta = db.aposta
 tbl_palpite = db.palpite
 tbl_pontuacao = db.pontuacao
+tbl_historico = db.historico
 
 if 'GOOGLE_OAUTH_CREDENTIAL_ID' not in os.environ or 'GOOGLE_OAUTH_CREDENTIAL_SECRET' not in os.environ:
     raise Exception('Please create two environment variables for google oauth: ' \
@@ -281,8 +282,9 @@ def chart(bolao, id_aposta):
     horarios_com_pontuacoes = obtem_datas_rodadas_com_pontuacao()
     labels = [obtem_label(horario) for horario in horarios]
     values = []
+    horario_ultima_rodada = obtem_data_rodada_anterior()
     for horario in horarios_com_pontuacoes:
-        posicao = calcula_posicao(id_bolao, id_aposta, horario)
+        posicao = calcula_posicao(id_bolao, id_aposta, horario, horario_ultima_rodada)
         if posicao is not None:
             values.append(posicao)
 
@@ -290,9 +292,14 @@ def chart(bolao, id_aposta):
                            nome_aposta=nome_aposta, bolao=bolao)
 
 
-def calcula_posicao(id_bolao, id_aposta, horario):
-    lista_retorno = []
+def calcula_posicao(id_bolao, id_aposta, horario, horario_ultima_rodada):
+    if horario_ultima_rodada is not None and horario <= horario_ultima_rodada:
+        historico = tbl_historico.find_one({'horario': horario, 'aposta': id_aposta})
+        if historico is not None:
+            return historico['posicao']
 
+    posicao = None
+    lista_retorno = []
     campos = ('pontos', 'placar_exato', 'vencedor_ou_empate', 'gols_de_um_time')
     for aposta in tbl_aposta.find({'bolao': id_bolao}):
         nova_aposta = {"id": str(aposta["_id"])}
@@ -305,9 +312,17 @@ def calcula_posicao(id_bolao, id_aposta, horario):
 
     for item in lista_ordenada:
         if item['id'] == id_aposta:
-            return item['posicao']
+            posicao = item['posicao']
+            break
 
-    return None
+    if horario_ultima_rodada is not None and horario <= horario_ultima_rodada:
+        if posicao is not None:
+            historico = {'horario': horario,
+                         'aposta': id_aposta,
+                         'posicao': posicao}
+            tbl_historico.insert_one(historico)
+
+    return posicao
 
 def flash_errors(form):
     for field, errors in form.errors.items():
