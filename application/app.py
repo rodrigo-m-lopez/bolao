@@ -269,6 +269,14 @@ def oauth_authorize(provider):
     oauth = OAuthSignIn.get_provider(provider)
     return oauth.authorize()
 
+@app.route("/chart")
+def chart():
+    labels = obtem_labels_rodadas()
+    legends = []
+    for i in range(-30, 0):
+        legends.append(-i)
+    values = [1, 2, 3]
+    return render_template('chart.html', values=values, labels=labels, legends=legends)
 
 def flash_errors(form):
     for field, errors in form.errors.items():
@@ -399,13 +407,35 @@ def incluiRanking(lista, campos, campo_ranking):
     return lista
 
 
-def obtem_data_rodada_anterior():
+def obtem_label(data):
+    jogos = []
+    for jogo in tbl_jogo.find({'data': data}):
+        mandante = tbl_selecao.find_one({'_id': jogo['mandante']})
+        visitante = tbl_selecao.find_one({'_id': jogo['visitante']})
+        jogos.append('{} x {}'.format(mandante['sigla'], visitante['sigla']))
+    return ','.join(jogos)
+
+
+def obtem_labels_rodadas():
+    horarios = []
+    for jogo in tbl_jogo.find():
+        horario = jogo['data']
+        if horario not in horarios:
+            bisect.insort(horarios, horario)
+
+    return [obtem_label(horario) for horario in horarios]
+
+def obtem_datas_rodadas_com_pontuacao():
     horarios = []
     for jogo in tbl_jogo.find({'gols_mandante': {"$ne": None}}):
         horario = jogo['data']
         if horario not in horarios:
             bisect.insort(horarios, horario)
 
+    return horarios
+
+def obtem_data_rodada_anterior():
+    horarios = obtem_datas_rodadas_com_pontuacao()
     return None if len(horarios) < 2 else horarios[-2]
 
 def monta_dto_apostas(bolao):
