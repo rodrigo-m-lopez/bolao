@@ -269,14 +269,45 @@ def oauth_authorize(provider):
     oauth = OAuthSignIn.get_provider(provider)
     return oauth.authorize()
 
-@app.route("/chart")
-def chart():
-    labels = obtem_labels_rodadas()
-    legends = []
-    for i in range(-30, 0):
-        legends.append(-i)
-    values = [1, 2, 3]
-    return render_template('chart.html', values=values, labels=labels, legends=legends)
+
+@app.route('/<bolao>/chart/<id_aposta>')
+def chart(bolao, id_aposta):
+    id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
+    aposta = tbl_aposta.find_one({'_id':ObjectId(id_aposta)})
+    nome_aposta = aposta['nome']
+    print(nome_aposta)
+    qtd_participantes = tbl_aposta.find({'bolao': id_bolao}).count()
+    horarios = obtem_horarios_rodadas()
+    horarios_com_pontuacoes = obtem_datas_rodadas_com_pontuacao()
+    labels = [obtem_label(horario) for horario in horarios]
+    values = []
+    for horario in horarios_com_pontuacoes:
+        posicao = calcula_posicao(id_bolao, id_aposta, horario)
+        if posicao is not None:
+            values.append(posicao)
+
+    return render_template('chart.html', values=values, labels=labels, qtd_participantes=qtd_participantes,
+                           nome_aposta=nome_aposta, bolao=bolao)
+
+
+def calcula_posicao(id_bolao, id_aposta, horario):
+    lista_retorno = []
+
+    campos = ('pontos', 'placar_exato', 'vencedor_ou_empate', 'gols_de_um_time')
+    for aposta in tbl_aposta.find({'bolao': id_bolao}):
+        nova_aposta = {"id": str(aposta["_id"])}
+        pontuacao_totalizada = totaliza_pontuacao(aposta['_id'], campos, horario)
+        for campo in campos:
+            nova_aposta[campo] = pontuacao_totalizada[campo]
+        lista_retorno.append(nova_aposta)
+
+    lista_ordenada = incluiRanking(lista_retorno, campos, 'posicao')
+
+    for item in lista_ordenada:
+        if item['id'] == id_aposta:
+            return item['posicao']
+
+    return None
 
 def flash_errors(form):
     for field, errors in form.errors.items():
@@ -416,14 +447,14 @@ def obtem_label(data):
     return ','.join(jogos)
 
 
-def obtem_labels_rodadas():
+def obtem_horarios_rodadas():
     horarios = []
     for jogo in tbl_jogo.find():
         horario = jogo['data']
         if horario not in horarios:
             bisect.insort(horarios, horario)
 
-    return [obtem_label(horario) for horario in horarios]
+    return horarios
 
 def obtem_datas_rodadas_com_pontuacao():
     horarios = []
@@ -449,9 +480,10 @@ def monta_dto_apostas(bolao):
     for aposta in tbl_aposta.find({'bolao': id_bolao}):
 
         usuario = tbl_usuario.find_one({'_id': aposta['usuario']})
-        nova_aposta = {"nome": aposta["nome"],
-                  "pago": aposta["pago"],
-                  "foto": usuario['foto']}
+        nova_aposta = {"id":aposta["_id"],
+                       "nome": aposta["nome"],
+                       "pago": aposta["pago"],
+                       "foto": usuario['foto']}
 
 
         pontuacao_totalizada = totaliza_pontuacao(aposta['_id'], campos_banco)
