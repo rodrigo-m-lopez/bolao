@@ -1,16 +1,14 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-   <meta charset="utf-8" />
-   <title>Chart.js </title>
- 
-   <!-- import plugin script -->
-   <script src='static/Chart.min.js'></script>
- 
-</head>
-<body>
+{% extends 'menu_base.html' %}
+
+{% set title = 'Ranking' %}
+
+{% block js %}<script src='{{url_for('static', filename='Chart.min.js')}}'></script>{% endblock %}
+
+{% block content %}
 <!-- bar chart canvas element -->
-<canvas id="chart" width="900" height="530"></canvas>
+<div class="card" style='padding:10px;'>
+<center><h5>{{ nome_aposta }}</h5></center>
+<canvas id="chart" width="850" height="530"></canvas>
  
 <script>
  
@@ -21,7 +19,7 @@
               {% endfor %}],
    datasets : [
       {
-            fillColor: "rgba(255,255,255,0.2)",
+            fillColor: "rgba(255,255,255,0.0)",
             strokeColor: "rgba(151,187,205,1)",
             pointColor: "rgba(151,187,205,1)",
             pointStrokeColor: "#fff",
@@ -46,15 +44,13 @@
  
    // get bar chart canvas
    var mychart = document.getElementById("chart").getContext("2d");
- 
-   steps = 30
-   max = 30
+   
    // draw bar chart
    var LineChartDemo = new Chart(mychart).Line(barData, {
         scaleOverride: true,
-        scaleSteps: steps,
-        scaleStepWidth: Math.ceil(max / steps),
-        scaleStartValue: 1,
+        scaleSteps: {{qtd_participantes -1}},
+        scaleStepWidth: -1,
+        scaleStartValue: {{qtd_participantes}},
         scaleShowVerticalLines: true,
         scaleShowGridLines : true,
         barShowStroke : true,
@@ -65,6 +61,5 @@
  
  
 </script>
- 
-</body>
-</html>
+</div>
+{% endblock %}
