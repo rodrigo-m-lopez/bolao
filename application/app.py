@@ -5,6 +5,7 @@ import os
 
 sys.path.append(os.path.abspath('../../bolao'))
 
+import bisect
 import pymongo
 from flask import Flask, flash
 from flask import request
@@ -33,15 +34,15 @@ if 'GOOGLE_OAUTH_CREDENTIAL_ID' not in os.environ or 'GOOGLE_OAUTH_CREDENTIAL_SE
                     'GOOGLE_OAUTH_CREDENTIAL_ID and GOOGLE_OAUTH_CREDENTIAL_SECRET')
 
 app = Flask(__name__)
-app.secret_key = os.environ['GOOGLE_OAUTH_CREDENTIAL_SECRET'] # can be any secret value
+app.secret_key = os.environ['GOOGLE_OAUTH_CREDENTIAL_SECRET']  # can be any secret value
 app.config.from_object(__name__)
-SECRET_KEY = os.environ['GOOGLE_OAUTH_CREDENTIAL_SECRET'] # can be any secret value
+SECRET_KEY = os.environ['GOOGLE_OAUTH_CREDENTIAL_SECRET']  # can be any secret value
 
 app.config['OAUTH_CREDENTIALS'] = {
     'google': {
-            'id': os.environ['GOOGLE_OAUTH_CREDENTIAL_ID'],
-            'secret': os.environ['GOOGLE_OAUTH_CREDENTIAL_SECRET']
-        }
+        'id': os.environ['GOOGLE_OAUTH_CREDENTIAL_ID'],
+        'secret': os.environ['GOOGLE_OAUTH_CREDENTIAL_SECRET']
+    }
 }
 
 login_manager = LoginManager()
@@ -52,9 +53,11 @@ login_manager.init_app(app)
 grupos = {}
 todos_jogos = []
 
+
 @login_manager.user_loader
 def load_user(user_id):
     return Usuario(user_id)
+
 
 @app.route('/')
 def inicio():
@@ -107,7 +110,8 @@ def nova_aposta(bolao):
 def descricao(bolao):
     bolao_selecionado = tbl_bolao.find_one({'nome': bolao})
     responsavel = tbl_usuario.find_one({'_id': bolao_selecionado['usuario']})
-    return render_template('descricao_bolao.html', bolao=bolao, bolao_selecionado=bolao_selecionado, responsavel=responsavel)
+    return render_template('descricao_bolao.html', bolao=bolao, bolao_selecionado=bolao_selecionado,
+                           responsavel=responsavel)
 
 
 @app.route('/<bolao>/ranking')
@@ -211,7 +215,6 @@ def palpite(bolao, nome_aposta):
                            pontuacoes=pontuacoes, placares=placares, nome_aposta=nome_aposta)
 
 
-
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     next_uri = request.args.get('next')
@@ -228,6 +231,7 @@ def logout():
         next_uri = url_for('intro')
     logout_user()
     return redirect(next_uri)
+
 
 @app.route('/callback/<provider>')
 def oauth_callback(provider):
@@ -365,46 +369,75 @@ def valida_informacoes_bolao(form):
     return not algum_erro
 
 
-def totaliza_pontuacao(id_aposta, campo):
-    total = 0
+def totaliza_pontuacao(id_aposta, campos, data_pontuacao=None):
+    totais = {campo: 0 for campo in campos}
     for pontuacao in tbl_pontuacao.find({'aposta': id_aposta}):
-        total = total + pontuacao[campo]
-    return total
+        id_jogo = pontuacao['jogo']
+        jogo = tbl_jogo.find_one({'_id': id_jogo})
+        if data_pontuacao is None or jogo['data'] <= data_pontuacao:
+            for campo in campos:
+                totais[campo] = totais[campo] + pontuacao[campo]
+    return totais
 
+
+def incluiRanking(lista, campos, campo_ranking):
+    lista = sorted(lista, key=itemgetter(*campos), reverse=True)
+    posicao = 1
+    posicao_anterior = posicao
+    anterior = [-1, -1, -1, -1]
+    for item in lista:
+        atual = [item[campo] for campo in campos]
+        if anterior == atual:
+            item[campo_ranking] = posicao_anterior
+        else:
+            item[campo_ranking] = posicao
+
+        anterior = atual
+        posicao_anterior = item[campo_ranking]
+        posicao += 1
+
+    return lista
+
+
+def obtem_data_rodada_anterior():
+    horarios = []
+    for jogo in tbl_jogo.find({'gols_mandante': {"$ne": None}}):
+        horario = jogo['data']
+        if horario not in horarios:
+            bisect.insort(horarios, horario)
+
+    return None if len(horarios) < 2 else horarios[-2]
 
 def monta_dto_apostas(bolao):
     lista_retorno = []
     id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
+    data_rodada_anterior = obtem_data_rodada_anterior()
     for aposta in tbl_aposta.find({'bolao': id_bolao}):
-        pontuacao_aposta = totaliza_pontuacao(aposta['_id'], 'pontos')
-        placares_exatos_aposta = totaliza_pontuacao(aposta['_id'], 'placar_exato')
-        vencedor_ou_empate_aposta = totaliza_pontuacao(aposta['_id'], 'vencedor_ou_empate')
-        gols_de_um_time_aposta = totaliza_pontuacao(aposta['_id'], 'gols_de_um_time')
+
         usuario = tbl_usuario.find_one({'_id': aposta['usuario']})
-        lista_retorno.append({"posicao": None,
-                              "nome": aposta["nome"],
-                              "pontuacao": pontuacao_aposta,
-                              "placar_exato": placares_exatos_aposta,
-                              "vencedor_ou_empate": vencedor_ou_empate_aposta,
-                              "gols_de_um_time": gols_de_um_time_aposta,
-                              "pago": aposta["pago"],
-                              "foto": usuario['foto']})
-    lista_ordenada = sorted(lista_retorno, key=itemgetter('pontuacao', 'placar_exato', 'vencedor_ou_empate', 'gols_de_um_time'),
-                  reverse=True)
+        nova_aposta = {"nome": aposta["nome"],
+                  "pago": aposta["pago"],
+                  "foto": usuario['foto']}
 
-    posicao = 1
-    posicao_anterior = posicao
-    anterior = (-1, -1, -1, -1)
+        campos_banco = ('pontos', 'placar_exato', 'vencedor_ou_empate', 'gols_de_um_time')
+
+        campos_dto = ('pontuacao', 'placar_exato', 'vencedor_ou_empate', 'gols_de_um_time')
+        pontuacao_totalizada = totaliza_pontuacao(aposta['_id'], campos_banco)
+        for i in range(len(campos_banco)):
+            nova_aposta[campos_dto[i]] = pontuacao_totalizada[campos_banco[i]]
+
+        campos_rodada_anterior = ('pontuacao_ant', 'placar_exato_ant', 'vencedor_ou_empate_ant', 'gols_de_um_time_ant')
+        pontuacao_totalizada_rodada_anterior = totaliza_pontuacao(aposta['_id'], campos_banco, data_rodada_anterior)
+        for i in range(len(campos_banco)):
+            nova_aposta[campos_rodada_anterior[i]] = pontuacao_totalizada_rodada_anterior[campos_banco[i]]
+
+        lista_retorno.append(nova_aposta)
+
+    incluiRanking(lista_retorno, campos_rodada_anterior, 'posicao_anterior')
+    lista_ordenada = incluiRanking(lista_retorno, campos_dto, 'posicao')
+
     for item in lista_ordenada:
-        atual = (item['pontuacao'], item['placar_exato'], item['vencedor_ou_empate'], item['gols_de_um_time'])
-        if anterior == atual:
-            item['posicao'] = posicao_anterior
-        else:
-            item['posicao'] = posicao
-
-        anterior = atual
-        posicao_anterior = item['posicao']
-        posicao += 1
+        item['variacao'] = item['posicao_anterior'] - item['posicao']
 
     return lista_ordenada
 
