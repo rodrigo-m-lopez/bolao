@@ -442,6 +442,10 @@ def monta_dto_apostas(bolao):
     lista_retorno = []
     id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
     data_rodada_anterior = obtem_data_rodada_anterior()
+    campos_banco = ('pontos', 'placar_exato', 'vencedor_ou_empate', 'gols_de_um_time')
+
+    campos_dto = ('pontuacao', 'placar_exato', 'vencedor_ou_empate', 'gols_de_um_time')
+    campos_rodada_anterior = ('pontuacao_ant', 'placar_exato_ant', 'vencedor_ou_empate_ant', 'gols_de_um_time_ant')
     for aposta in tbl_aposta.find({'bolao': id_bolao}):
 
         usuario = tbl_usuario.find_one({'_id': aposta['usuario']})
@@ -449,14 +453,11 @@ def monta_dto_apostas(bolao):
                   "pago": aposta["pago"],
                   "foto": usuario['foto']}
 
-        campos_banco = ('pontos', 'placar_exato', 'vencedor_ou_empate', 'gols_de_um_time')
 
-        campos_dto = ('pontuacao', 'placar_exato', 'vencedor_ou_empate', 'gols_de_um_time')
         pontuacao_totalizada = totaliza_pontuacao(aposta['_id'], campos_banco)
         for i in range(len(campos_banco)):
             nova_aposta[campos_dto[i]] = pontuacao_totalizada[campos_banco[i]]
 
-        campos_rodada_anterior = ('pontuacao_ant', 'placar_exato_ant', 'vencedor_ou_empate_ant', 'gols_de_um_time_ant')
         pontuacao_totalizada_rodada_anterior = totaliza_pontuacao(aposta['_id'], campos_banco, data_rodada_anterior)
         for i in range(len(campos_banco)):
             nova_aposta[campos_rodada_anterior[i]] = pontuacao_totalizada_rodada_anterior[campos_banco[i]]
