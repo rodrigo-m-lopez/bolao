@@ -7,6 +7,7 @@
     <tr>
       <th scope="col">#</th>
 	  <th scope="col"></th>
+	  <th scope="col"></th>
 	  <th scope="col">Nome</th>
 	  <th scope="col">Pontuação</th>
 	  <th scope="col">Placares Exatos</th>
@@ -27,6 +28,7 @@
 	    <small>{{ aposta.variacao }} <i class="fa fa-square" style="font-size:12px;color:Gainsboro"></i></small>
 	  {% endif %}
 	  </td>
+	  <td scope="row"><a href="/chart"> <i class="fa fa-line-chart"></i></a></td>
 	  <td><a href="/{{ bolao }}/palpite/{{ aposta.nome }}#"> {{ aposta.nome }}</a></td>
 	  <td>{{ aposta.pontuacao }} </td>
 	  <td>{{ aposta.placar_exato }}</td>
