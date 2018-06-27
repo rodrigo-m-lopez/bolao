@@ -1,0 +1,29 @@
+{% extends 'menu_base.html' %}
+
+{% set title = 'Jogo' %}
+
+{% block content %}
+<table class="table table-striped table-sm table-light text-center" align="center" style="width: 650px">
+  <thead class="thead-light">
+    <tr>
+      <th colspan="3" scope="col" class="text-center text-uppercase">
+        {{ jogo.nome_mandante }}
+        <img itemprop="image" src="{{ jogo.escudo_mandante }}" width="30" height="30">
+        <span style="margin: 0 40px">{{ placar }}</span>
+        <img itemprop="image" src="{{ jogo.escudo_visitante }}" width="30" height="30">
+        {{ jogo.nome_visitante }}
+      </th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for aposta in apostas -%}
+    <tr>
+      <td><a href="/{{ bolao }}/palpite/{{ aposta.nome }}#"> {{ aposta.nome }}</a></td>
+      <td class="text-center font-weight-bold">{{ palpites[aposta.nome] }}</td>
+      <td class="text-center">{{ pontuacoes[aposta.nome] }} pontos</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endblock %}
