@@ -216,6 +216,26 @@ def palpite(bolao, nome_aposta):
                            pontuacoes=pontuacoes, placares=placares, nome_aposta=nome_aposta)
 
 
+@app.route('/<bolao>/jogo/<nome_jogo>')
+def jogo(bolao, nome_jogo):
+    monta_dto_grupos()
+    jogo = next(x for x in todos_jogos if x['nome'] == nome_jogo)
+    placar = '{} x {}'.format(jogo["gols_mandante"], jogo["gols_visitante"])
+    apostas = monta_dto_apostas(bolao)
+    palpites = {}
+    pontuacoes = {}
+    for aposta in apostas:
+        palpite_jogo = tbl_palpite.find_one({'aposta': aposta['id'], 'jogo': jogo['_id']})
+        palpites[aposta['nome']] = '{} x {}'.format(palpite_jogo['gols_mandante'], palpite_jogo['gols_visitante'])
+        pontuacao_jogo = tbl_pontuacao.find_one({'aposta': aposta['id'], 'jogo': jogo['_id']})
+        pontuacoes[aposta['nome']] = pontuacao_jogo['pontos']
+    # Ordenar por pontuacao (decrescente) e em caso de empate, desempatar por ordem alfabética
+    apostas.sort(key=lambda aposta: aposta['nome'])
+    apostas.sort(key=lambda aposta: pontuacoes[aposta['nome']], reverse=True)
+    return render_template('jogos.html', bolao=bolao, jogo=jogo, palpites=palpites,
+                           apostas=apostas, placar=placar, pontuacoes=pontuacoes)
+
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     next_uri = request.args.get('next')
@@ -559,6 +579,8 @@ def monta_dto_jogo(jogo):
     visitante = tbl_selecao.find_one({'_id': jogo["visitante"]})
     return {"_id": jogo["_id"],
             "nome": jogo["nome"],
+            "gols_mandante": '-' if jogo["gols_mandante"] is None else jogo["gols_mandante"],
+            "gols_visitante": '-' if jogo["gols_visitante"] is None else jogo["gols_visitante"],
             "escudo_mandante": mandante["escudo"],
             "escudo_visitante": visitante["escudo"],
             "nome_mandante": mandante["nome"],
