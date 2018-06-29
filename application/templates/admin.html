@@ -34,7 +34,9 @@
         <thead>
         <tr>
           <th scope="col">#</th>
-          <th scope="col">Nome</th>
+          <th scope="col">Nome Usuario</th>
+          <th scope="col">Email Usuario</th>
+          <th scope="col">Nome Aposta</th>
           <th scope="col"></th>
           <th scope="col"></th>
         </tr>
@@ -43,6 +45,9 @@
     {% for aposta in lista_apostas -%}
         <tr>
           <td scope="row">{{loop.index}}</td>
+
+          <td>{{ aposta.usuario_nome }}</td>
+          <td>{{ aposta.usuario_email }}</td>
           <td>{{ aposta.nome }}</td>
 
           {% if not aposta.pago %}
