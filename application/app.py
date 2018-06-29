@@ -520,6 +520,7 @@ def monta_dto_apostas(bolao):
                        "pago": aposta["pago"],
                        "foto": usuario['foto']}
 
+        nova_aposta.update({'usuario_nome' : usuario['nome'], 'usuario_email': usuario['email']})
 
         pontuacao_totalizada = totaliza_pontuacao(aposta['_id'], campos_banco)
         for i in range(len(campos_banco)):
