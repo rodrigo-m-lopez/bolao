@@ -111,7 +111,7 @@ def nova_aposta(bolao):
     if request.method == 'GET':
         return render_template('aposta.html', grupos=grupos, bolao=bolao)
     else:
-        id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
+        id_bolao = get_bolao_id(bolao)
         nome_aposta = request.form['inputNome']
         if not aposta_ja_existe(nome_aposta, id_bolao):
             id_aposta = insere_aposta(nome_aposta, id_bolao)
@@ -157,7 +157,7 @@ def valida_nome_bolao():
 @app.route('/<bolao>/valida_nome_aposta', methods=['POST'])
 def valida_nome_aposta(bolao):
     nome_aposta = request.form['nome_aposta']
-    id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
+    id_bolao = get_bolao_id(bolao)
 
     if aposta_ja_existe(nome_aposta, id_bolao):
         return 'Aposta com nome <strong>{}</strong> já existe para este bolão, escolha outro.'.format(escape(nome_aposta))
@@ -169,7 +169,7 @@ def valida_nome_aposta(bolao):
 @login_required
 def toggle_pago(bolao):
     if usuario_criou_o_bolao(bolao):
-        id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
+        id_bolao = get_bolao_id(bolao)
         nome_aposta = request.form['nome_aposta']
         aposta = tbl_aposta.find_one({'nome': nome_aposta, 'bolao': id_bolao})
         novo_pago = not aposta['pago']
@@ -195,7 +195,7 @@ def grade():
 @login_required
 def remover_aposta(bolao):
     if usuario_criou_o_bolao(bolao):
-        id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
+        id_bolao = get_bolao_id(bolao)
         nome_aposta = request.form['nome_aposta']
         id_aposta = tbl_aposta.find_one({"nome": nome_aposta, 'bolao': id_bolao})['_id']
         tbl_aposta.delete_one({'_id': id_aposta})
@@ -210,7 +210,7 @@ def remover_aposta(bolao):
 @login_required
 def remover_bolao(bolao):
     if usuario_criou_o_bolao(bolao):
-        id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
+        id_bolao = get_bolao_id(bolao)
         tbl_bolao.delete_one({'_id': id_bolao})
         return redirect(url_for('lista_bolao'))
     else:
@@ -220,7 +220,7 @@ def remover_bolao(bolao):
 
 @app.route('/<bolao>/palpite/<nome_aposta>')
 def palpite(bolao, nome_aposta):
-    id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
+    id_bolao = get_bolao_id(bolao)
     aposta = tbl_aposta.find_one({'nome': nome_aposta, 'bolao': id_bolao})
     _, todos_jogos = monta_dto_grupos()
     palpites = monta_palpites(aposta, todos_jogos)
@@ -308,7 +308,7 @@ def oauth_authorize(provider):
 
 @app.route('/<bolao>/chart/<id_aposta>')
 def chart(bolao, id_aposta):
-    id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
+    id_bolao = get_bolao_id(bolao)
     aposta = tbl_aposta.find_one({'_id': ObjectId(id_aposta)})
     nome_aposta = aposta['nome']
     logger.debug('Chart view for aposta: %s', nome_aposta)
@@ -328,6 +328,24 @@ def chart(bolao, id_aposta):
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
+
+def get_bolao_id(nome_bolao):
+    """Return the ObjectId of a bolão by name, or abort 404."""
+    from flask import abort
+    bolao = tbl_bolao.find_one({'nome': nome_bolao})
+    if bolao is None:
+        abort(404, description="Bolão '{}' não encontrado.".format(nome_bolao))
+    return bolao['_id']
+
+
+def get_aposta_by_nome(nome_aposta, id_bolao):
+    """Return the aposta document by name and bolao id, or abort 404."""
+    from flask import abort
+    aposta = tbl_aposta.find_one({'nome': nome_aposta, 'bolao': id_bolao})
+    if aposta is None:
+        abort(404, description="Aposta '{}' não encontrada.".format(nome_aposta))
+    return aposta
+
 
 def is_safe_url(target):
     """Return True only if target points to the same host (prevents open redirect)."""
@@ -540,7 +558,7 @@ def calcula_posicao(id_bolao, id_aposta, horario, horario_ultima_rodada):
 
 def monta_dto_apostas(bolao):
     lista_retorno = []
-    id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
+    id_bolao = get_bolao_id(bolao)
     data_rodada_anterior = obtem_data_rodada_anterior()
     campos_banco = CAMPOS_PONTUACAO_BANCO
     campos_dto = CAMPOS_PONTUACAO_DTO
