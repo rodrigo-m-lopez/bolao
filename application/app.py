@@ -70,9 +70,6 @@ login_manager.login_view = 'login'
 login_manager.login_message = 'Você precisa estar logado para acessar esta página!'
 login_manager.init_app(app)
 
-grupos = {}
-todos_jogos = []
-
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -110,7 +107,7 @@ def lista_bolao():
 @app.route('/<bolao>/nova_aposta', methods=['GET', 'POST'])
 @login_required
 def nova_aposta(bolao):
-    grupos = monta_dto_grupos()
+    grupos, todos_jogos = monta_dto_grupos()
     if request.method == 'GET':
         return render_template('aposta.html', grupos=grupos, bolao=bolao)
     else:
@@ -118,8 +115,8 @@ def nova_aposta(bolao):
         nome_aposta = request.form['inputNome']
         if not aposta_ja_existe(nome_aposta, id_bolao):
             id_aposta = insere_aposta(nome_aposta, id_bolao)
-            insere_palpites(id_aposta, request.form)
-            insere_pontuacoes(id_aposta)
+            insere_palpites(id_aposta, request.form, todos_jogos)
+            insere_pontuacoes(id_aposta, todos_jogos)
             return ranking(bolao)
         else:
             flash('Já existe uma aposta para este bolão com o nome [{}]. Escolha outro.'.format(nome_aposta))
@@ -225,11 +222,11 @@ def remover_bolao(bolao):
 def palpite(bolao, nome_aposta):
     id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
     aposta = tbl_aposta.find_one({'nome': nome_aposta, 'bolao': id_bolao})
-    monta_dto_grupos()
-    palpites = monta_palpites(aposta)
-    pontuacoes = monta_pontuacoes(aposta)
+    _, todos_jogos = monta_dto_grupos()
+    palpites = monta_palpites(aposta, todos_jogos)
+    pontuacoes = monta_pontuacoes(aposta, todos_jogos)
     lista_jogos_ordem_tela = []
-    placares = monta_placares(lista_jogos_ordem_tela)
+    placares = monta_placares(lista_jogos_ordem_tela, todos_jogos)
 
     return render_template('palpites.html', bolao=bolao, jogos=lista_jogos_ordem_tela, palpites=palpites,
                            pontuacoes=pontuacoes, placares=placares, nome_aposta=nome_aposta)
@@ -237,21 +234,23 @@ def palpite(bolao, nome_aposta):
 
 @app.route('/<bolao>/jogo/<nome_jogo>')
 def jogo(bolao, nome_jogo):
-    monta_dto_grupos()
-    jogo = next(x for x in todos_jogos if x['nome'] == nome_jogo)
-    placar = '{} x {}'.format(jogo["gols_mandante"], jogo["gols_visitante"])
+    _, todos_jogos = monta_dto_grupos()
+    jogo_dto = next((x for x in todos_jogos if x['nome'] == nome_jogo), None)
+    if jogo_dto is None:
+        flash('Jogo não encontrado.')
+        return redirect(url_for('lista_bolao'))
+    placar = '{} x {}'.format(jogo_dto["gols_mandante"], jogo_dto["gols_visitante"])
     apostas = monta_dto_apostas(bolao)
     palpites = {}
     pontuacoes = {}
     for aposta in apostas:
-        palpite_jogo = tbl_palpite.find_one({'aposta': aposta['id'], 'jogo': jogo['_id']})
+        palpite_jogo = tbl_palpite.find_one({'aposta': aposta['id'], 'jogo': jogo_dto['_id']})
         palpites[aposta['nome']] = '{} x {}'.format(palpite_jogo['gols_mandante'], palpite_jogo['gols_visitante'])
-        pontuacao_jogo = tbl_pontuacao.find_one({'aposta': aposta['id'], 'jogo': jogo['_id']})
+        pontuacao_jogo = tbl_pontuacao.find_one({'aposta': aposta['id'], 'jogo': jogo_dto['_id']})
         pontuacoes[aposta['nome']] = pontuacao_jogo['pontos']
-    # Ordenar por pontuacao (decrescente) e em caso de empate, desempatar por ordem alfabética
-    apostas.sort(key=lambda aposta: aposta['nome'])
-    apostas.sort(key=lambda aposta: pontuacoes[aposta['nome']], reverse=True)
-    return render_template('jogos.html', bolao=bolao, jogo=jogo, palpites=palpites,
+    apostas.sort(key=lambda a: a['nome'])
+    apostas.sort(key=lambda a: pontuacoes[a['nome']], reverse=True)
+    return render_template('jogos.html', bolao=bolao, jogo=jogo_dto, palpites=palpites,
                            apostas=apostas, placar=placar, pontuacoes=pontuacoes)
 
 
@@ -328,37 +327,7 @@ def chart(bolao, id_aposta):
                            nome_aposta=nome_aposta, bolao=bolao)
 
 
-def calcula_posicao(id_bolao, id_aposta, horario, horario_ultima_rodada):
-    if horario_ultima_rodada is not None and horario <= horario_ultima_rodada:
-        historico = tbl_historico.find_one({'horario': horario, 'aposta': id_aposta})
-        if historico is not None:
-            return historico['posicao']
-
-    posicao = None
-    lista_retorno = []
-    campos = CAMPOS_PONTUACAO_BANCO
-    for aposta in tbl_aposta.find({'bolao': id_bolao}):
-        nova_aposta = {"id": str(aposta["_id"])}
-        pontuacao_totalizada = totaliza_pontuacao(aposta['_id'], campos, horario)
-        for campo in campos:
-            nova_aposta[campo] = pontuacao_totalizada[campo]
-        lista_retorno.append(nova_aposta)
-
-    lista_ordenada = incluiRanking(lista_retorno, campos, 'posicao')
-
-    for item in lista_ordenada:
-        if item['id'] == id_aposta:
-            posicao = item['posicao']
-            break
-
-    if horario_ultima_rodada is not None and horario <= horario_ultima_rodada:
-        if posicao is not None:
-            historico = {'horario': horario,
-                         'aposta': id_aposta,
-                         'posicao': posicao}
-            tbl_historico.insert_one(historico)
-
-    return posicao
+# ── Helpers ──────────────────────────────────────────────────────────────────
 
 def is_safe_url(target):
     """Return True only if target points to the same host (prevents open redirect)."""
@@ -385,7 +354,7 @@ def usuario_criou_o_bolao(nome_bolao):
     return tbl_bolao.find_one({'usuario': current_user.mongo_id, 'nome': nome_bolao}) is not None
 
 
-def monta_placares(lista_jogos_ordem_tela):
+def monta_placares(lista_jogos_ordem_tela, todos_jogos):
     placares = {}
     lista_sem_resultados = []
     lista_com_resultados = []
@@ -405,7 +374,7 @@ def monta_placares(lista_jogos_ordem_tela):
     return placares
 
 
-def monta_pontuacoes(aposta):
+def monta_pontuacoes(aposta, todos_jogos):
     pontuacoes = {}
     for jogo in todos_jogos:
         pontuacao_jogo = tbl_pontuacao.find_one({'aposta': aposta['_id'],
@@ -414,7 +383,7 @@ def monta_pontuacoes(aposta):
     return pontuacoes
 
 
-def monta_palpites(aposta):
+def monta_palpites(aposta, todos_jogos):
     palpites = {}
     for jogo in todos_jogos:
         palpite_jogo = tbl_palpite.find_one({'aposta': aposta['_id'],
@@ -519,8 +488,8 @@ def obtem_horarios_rodadas():
         horario = jogo['data']
         if horario not in horarios:
             bisect.insort(horarios, horario)
-
     return horarios
+
 
 def obtem_datas_rodadas_com_pontuacao():
     horarios = []
@@ -528,12 +497,46 @@ def obtem_datas_rodadas_com_pontuacao():
         horario = jogo['data']
         if horario not in horarios:
             bisect.insort(horarios, horario)
-
     return horarios
+
 
 def obtem_data_rodada_anterior():
     horarios = obtem_datas_rodadas_com_pontuacao()
     return None if len(horarios) < 2 else horarios[-2]
+
+
+def calcula_posicao(id_bolao, id_aposta, horario, horario_ultima_rodada):
+    if horario_ultima_rodada is not None and horario <= horario_ultima_rodada:
+        historico = tbl_historico.find_one({'horario': horario, 'aposta': id_aposta})
+        if historico is not None:
+            return historico['posicao']
+
+    posicao = None
+    lista_retorno = []
+    campos = CAMPOS_PONTUACAO_BANCO
+    for aposta in tbl_aposta.find({'bolao': id_bolao}):
+        nova_aposta = {"id": str(aposta["_id"])}
+        pontuacao_totalizada = totaliza_pontuacao(aposta['_id'], campos, horario)
+        for campo in campos:
+            nova_aposta[campo] = pontuacao_totalizada[campo]
+        lista_retorno.append(nova_aposta)
+
+    lista_ordenada = incluiRanking(lista_retorno, campos, 'posicao')
+
+    for item in lista_ordenada:
+        if item['id'] == id_aposta:
+            posicao = item['posicao']
+            break
+
+    if horario_ultima_rodada is not None and horario <= horario_ultima_rodada:
+        if posicao is not None:
+            historico = {'horario': horario,
+                         'aposta': id_aposta,
+                         'posicao': posicao}
+            tbl_historico.insert_one(historico)
+
+    return posicao
+
 
 def monta_dto_apostas(bolao):
     lista_retorno = []
@@ -543,7 +546,6 @@ def monta_dto_apostas(bolao):
     campos_dto = CAMPOS_PONTUACAO_DTO
     campos_rodada_anterior = CAMPOS_PONTUACAO_ANTERIOR
     for aposta in tbl_aposta.find({'bolao': id_bolao}):
-
         usuario = tbl_usuario.find_one({'_id': aposta['usuario']})
         nova_aposta = {"id": aposta["_id"],
                        "nome": aposta["nome"],
@@ -579,7 +581,7 @@ def insere_aposta(nome, id_bolao):
                                   }).inserted_id
 
 
-def insere_pontuacoes(id_aposta):
+def insere_pontuacoes(id_aposta, todos_jogos):
     for jogo in todos_jogos:
         id_jogo = jogo["_id"]
         tbl_pontuacao.insert_one({'aposta': id_aposta,
@@ -590,7 +592,7 @@ def insere_pontuacoes(id_aposta):
                                   'gols_de_um_time': 0})
 
 
-def insere_palpites(id_aposta, form):
+def insere_palpites(id_aposta, form, todos_jogos):
     for jogo in todos_jogos:
         id_jogo = jogo["_id"]
         id_mandante_form = 'm{0}'.format(str(id_jogo))
@@ -623,7 +625,7 @@ def monta_dto_jogo(jogo):
             "local": jogo["local"]}
 
 
-def inclui_jogo_na_lista_rodadas(lista_rodadas, jogo):
+def inclui_jogo_na_lista_rodadas(lista_rodadas, jogo, todos_jogos):
     rodada_do_jogo = jogo["rodada"]
 
     existe_rodada_na_lista = False
@@ -651,18 +653,17 @@ def monta_dto_boloes():
 
 
 def monta_dto_grupos():
-    if not grupos:
-        # for jogo in tbl_jogo.find({'grupo': 'Grupo A', 'rodada': 1}):  # para testar com menos jogos
-        for jogo in tbl_jogo.find().sort(
-                [("grupo", pymongo.ASCENDING), ("rodada", pymongo.ASCENDING), ("data", pymongo.ASCENDING)]):
-            nome_grupo = jogo["grupo"]
-            if nome_grupo not in grupos.keys():
-                grupos[nome_grupo] = {"nome": nome_grupo,
-                                      "rodadas": []}
-
-            rodadas = grupos[nome_grupo]["rodadas"]
-            inclui_jogo_na_lista_rodadas(rodadas, jogo)
-    return [grupos[x] for x in sorted(grupos)]
+    """Return (grupos_list, todos_jogos_list) — always fresh from DB, no global state."""
+    grupos_dict = {}
+    todos_jogos_local = []
+    for jogo in tbl_jogo.find().sort(
+            [("grupo", pymongo.ASCENDING), ("rodada", pymongo.ASCENDING), ("data", pymongo.ASCENDING)]):
+        nome_grupo = jogo["grupo"]
+        if nome_grupo not in grupos_dict:
+            grupos_dict[nome_grupo] = {"nome": nome_grupo, "rodadas": []}
+        rodadas = grupos_dict[nome_grupo]["rodadas"]
+        inclui_jogo_na_lista_rodadas(rodadas, jogo, todos_jogos_local)
+    return [grupos_dict[x] for x in sorted(grupos_dict)], todos_jogos_local
 
 
 class Usuario:
