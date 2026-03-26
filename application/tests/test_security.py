@@ -56,6 +56,22 @@ class TestLogoutRedirect:
         assert '/intro' in location
 
 
+class TestCsrf:
+    def test_post_without_token_returns_400(self, flask_app):
+        """Com CSRF habilitado, POST sem token deve retornar 400."""
+        flask_app.config['WTF_CSRF_ENABLED'] = True
+        flask_app.config['WTF_CSRF_CHECK_DEFAULT'] = True
+        with flask_app.test_client() as c:
+            rv = c.post('/novo_bolao', data={'inputNome': 'test'})
+            assert rv.status_code == 400
+        flask_app.config['WTF_CSRF_ENABLED'] = False
+
+    def test_get_requests_not_protected(self, client):
+        """GET não precisa de token CSRF."""
+        rv = client.get('/intro')
+        assert rv.status_code == 200
+
+
 class TestXss:
     def test_valida_nome_aposta_escapes_html(self, client):
         """Nome de aposta com HTML não deve ser refletido cru."""

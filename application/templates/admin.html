@@ -22,6 +22,7 @@
 			<div class="modal-footer">
 				<button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
 				<form method="post" action="/{{ bolao }}/remover_bolao" class="inline">
+				  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 				  <button type="submit" class="btn btn-success success">Confirmar</button>
 				</form>
 			</div>
@@ -73,6 +74,7 @@
 		  var xhttp = new XMLHttpRequest();
 		  xhttp.open("POST", "/{{ bolao }}/remover_aposta", true);
 		  xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+		  xhttp.setRequestHeader("X-CSRFToken", document.querySelector('meta[name="csrf-token"]').content);
 		  xhttp.onreadystatechange = function() {
 				if (this.readyState == 4 && this.status == 200) {
 					window.location.reload();
@@ -86,6 +88,7 @@
         var xhttp = new XMLHttpRequest();
         xhttp.open("POST", "/{{ bolao }}/toggle_pago", true);
         xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+        xhttp.setRequestHeader("X-CSRFToken", document.querySelector('meta[name="csrf-token"]').content);
         xhttp.onreadystatechange = function() {
             if (this.readyState == 4 && this.status == 200) {
                 window.location.reload();

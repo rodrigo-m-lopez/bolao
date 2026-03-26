@@ -4,6 +4,7 @@
 
 {% block content %}
 <form method="POST" action="/{{ bolao }}/nova_aposta">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 <div class="form-group" >
 	<input type="text" class="form-control" onblur="validaNome()" style="width: 52rem;" name="inputNome" id="inputNome" placeholder="Nome da Aposta" required>
 	<div id="erro"></div>
@@ -57,7 +58,8 @@
 	  };
 	  xhttp.open("POST", "/{{ bolao }}/valida_nome_aposta", true);
 	  xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-	  xhttp.send("nome_aposta=" + document.getElementById("inputNome").value);
+	  xhttp.setRequestHeader("X-CSRFToken", document.querySelector('meta[name="csrf-token"]').content);
+	  xhttp.send("nome_aposta=" + encodeURIComponent(document.getElementById("inputNome").value));
 	}
 </script>
 

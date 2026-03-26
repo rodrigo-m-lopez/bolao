@@ -24,6 +24,7 @@ from application.constants import (
 )
 
 from flask_login import LoginManager, current_user, login_user, logout_user, login_required
+from flask_wtf.csrf import CSRFProtect
 from application.oauth import OAuthSignIn
 
 logging.basicConfig(
@@ -55,6 +56,7 @@ app = Flask(__name__)
 app.secret_key = os.environ['FLASK_SECRET_KEY']
 app.config.from_object(__name__)
 SECRET_KEY = app.secret_key
+csrf = CSRFProtect(app)
 
 app.config['OAUTH_CREDENTIALS'] = {
     'google': {
