@@ -14,6 +14,7 @@ from flask import render_template, redirect, url_for, session
 from operator import itemgetter
 from bson import ObjectId
 from urllib.parse import urlparse, urljoin
+from markupsafe import escape
 
 from application.db_config import get_db_client
 from application.constants import (
@@ -160,7 +161,7 @@ def valida_nome_aposta(bolao):
     id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
 
     if aposta_ja_existe(nome_aposta, id_bolao):
-        return 'Aposta com nome <strong>{0}</strong> já existe para este bolão, escolha outro.'.format(nome_aposta)
+        return 'Aposta com nome <strong>{}</strong> já existe para este bolão, escolha outro.'.format(escape(nome_aposta))
     else:
         return ''
 
@@ -430,7 +431,7 @@ def cria_bolao(form):
 
 def valida_nome_bolao_ja_existe(nome_bolao):
     if tbl_bolao.find_one({'nome': nome_bolao}) is not None:
-        return 'Nome [{}] já foi escolhido para um bolão, escolha outro.'.format(nome_bolao)
+        return 'Nome [{}] já foi escolhido para um bolão, escolha outro.'.format(escape(nome_bolao))
     else:
         return ''
 

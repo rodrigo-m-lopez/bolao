@@ -56,6 +56,39 @@ class TestLogoutRedirect:
         assert '/intro' in location
 
 
+class TestXss:
+    def test_valida_nome_aposta_escapes_html(self, client):
+        """Nome de aposta com HTML não deve ser refletido cru."""
+        # Need to create a bolao first and set a cookie for session
+        db = __import__('application.app', fromlist=['tbl_bolao']).tbl_bolao
+        from bson import ObjectId
+        db.insert_one({'nome': 'xss_bolao', 'usuario': ObjectId(), 'valor': 10,
+                       'premiacao': '', 'descricao': ''})
+        # Insert a conflicting aposta
+        tbl_aposta = __import__('application.app', fromlist=['tbl_aposta']).tbl_aposta
+        tbl_bolao = __import__('application.app', fromlist=['tbl_bolao']).tbl_bolao
+        id_bolao = tbl_bolao.find_one({'nome': 'xss_bolao'})['_id']
+        tbl_aposta.insert_one({'nome': '<script>alert(1)</script>', 'bolao': id_bolao,
+                               'usuario': ObjectId(), 'pago': False})
+        rv = client.post('/xss_bolao/valida_nome_aposta',
+                         data={'nome_aposta': '<script>alert(1)</script>'})
+        assert rv.status_code == 200
+        # The raw script tag should be escaped
+        assert b'<script>alert(1)</script>' not in rv.data
+        assert b'&lt;script&gt;' in rv.data
+
+    def test_valida_nome_bolao_escapes_html(self, client):
+        """Nome de bolão com HTML não deve ser refletido cru."""
+        import application.app as app_module
+        from bson import ObjectId
+        app_module.tbl_bolao.insert_one({'nome': '<img src=x>', 'usuario': ObjectId(),
+                                         'valor': 10, 'premiacao': '', 'descricao': ''})
+        rv = client.post('/valida_nome_bolao', data={'nome_bolao': '<img src=x>'})
+        assert rv.status_code == 200
+        assert b'<img src=x>' not in rv.data
+        assert b'&lt;img' in rv.data
+
+
 class TestLoginRedirect:
     def test_login_stores_safe_next_in_session(self, client):
         with client.session_transaction() as sess:

@@ -75,9 +75,9 @@
 	<script>
 	function r(f){/in/.test(document.readyState)?setTimeout(r,9,f):f()}
 	r(function(){
-		var messages = "{{ get_flashed_messages() }}";
+		var messages = {{ get_flashed_messages() | tojson }};
 
-		if (typeof messages != 'undefined' && messages != '[]') {
+		if (messages && messages.length > 0) {
 			$("#myModal").modal();
 		};
 	});

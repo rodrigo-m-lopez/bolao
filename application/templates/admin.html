@@ -75,12 +75,10 @@
 		  xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
 		  xhttp.onreadystatechange = function() {
 				if (this.readyState == 4 && this.status == 200) {
-					document.open();
-					document.write(this.responseText);
-					document.close();
+					window.location.reload();
 				}
 			};
-		  xhttp.send("nome_aposta=" + sender.name );
+		  xhttp.send("nome_aposta=" + encodeURIComponent(sender.name));
 		}
 	}
 
@@ -90,12 +88,10 @@
         xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
         xhttp.onreadystatechange = function() {
             if (this.readyState == 4 && this.status == 200) {
-                document.open();
-                document.write(this.responseText);
-                document.close();
+                window.location.reload();
             }
         };
-        xhttp.send("nome_aposta=" + sender.name);
+        xhttp.send("nome_aposta=" + encodeURIComponent(sender.name));
     }
 </script>
 {% endblock %}

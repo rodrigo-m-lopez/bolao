@@ -15,7 +15,7 @@
    // bar chart data
    var barData = {
    labels : [{% for item in labels %}
-                  "{{item}}",
+                  {{ item | tojson }},
               {% endfor %}],
    datasets : [
       {
