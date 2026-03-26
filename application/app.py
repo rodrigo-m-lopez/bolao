@@ -373,17 +373,15 @@ def usuario_criou_o_bolao(nome_bolao):
 
 
 def monta_placares(lista_jogos_ordem_tela, todos_jogos):
+    """Build placares dict from todos_jogos DTO — no extra DB queries needed."""
     placares = {}
     lista_sem_resultados = []
     lista_com_resultados = []
     for jogo in todos_jogos:
-        id_jogo = ObjectId(jogo['_id'])
-        jogo_banco = tbl_jogo.find_one({'_id': id_jogo})
-        lista = lista_sem_resultados if jogo_banco['gols_mandante'] is None else lista_com_resultados
-        lista.append(jogo)
-        gols_mandante = '-' if jogo_banco['gols_mandante'] is None else jogo_banco['gols_mandante']
-        gols_visitante = '-' if jogo_banco['gols_visitante'] is None else jogo_banco['gols_visitante']
-        placares[jogo['nome']] = '{} x {}'.format(gols_mandante, gols_visitante)
+        # monta_dto_jogo already set gols_mandante to '-' when None
+        sem_resultado = jogo['gols_mandante'] == '-'
+        (lista_sem_resultados if sem_resultado else lista_com_resultados).append(jogo)
+        placares[jogo['nome']] = '{} x {}'.format(jogo['gols_mandante'], jogo['gols_visitante'])
 
     lista_com_resultados.sort(key=itemgetter('date_time'), reverse=True)
     lista_sem_resultados.sort(key=itemgetter('date_time'), reverse=False)
@@ -393,20 +391,24 @@ def monta_placares(lista_jogos_ordem_tela, todos_jogos):
 
 
 def monta_pontuacoes(aposta, todos_jogos):
-    pontuacoes = {}
-    for jogo in todos_jogos:
-        pontuacao_jogo = tbl_pontuacao.find_one({'aposta': aposta['_id'],
-                                                 'jogo': jogo['_id']})
-        pontuacoes[jogo['nome']] = pontuacao_jogo['pontos']
+    """Return pontuacao por jogo using 1 query instead of 1-per-jogo."""
+    jogos_map = {jogo['_id']: jogo['nome'] for jogo in todos_jogos}
+    pontuacoes = {jogo['nome']: 0 for jogo in todos_jogos}
+    for pontuacao in tbl_pontuacao.find({'aposta': aposta['_id']}):
+        nome = jogos_map.get(pontuacao['jogo'])
+        if nome:
+            pontuacoes[nome] = pontuacao['pontos']
     return pontuacoes
 
 
 def monta_palpites(aposta, todos_jogos):
+    """Return palpites por jogo using 1 query instead of 1-per-jogo."""
+    jogos_map = {jogo['_id']: jogo['nome'] for jogo in todos_jogos}
     palpites = {}
-    for jogo in todos_jogos:
-        palpite_jogo = tbl_palpite.find_one({'aposta': aposta['_id'],
-                                             'jogo': jogo['_id']})
-        palpites[jogo['nome']] = '{} x {}'.format(palpite_jogo['gols_mandante'], palpite_jogo['gols_visitante'])
+    for palpite in tbl_palpite.find({'aposta': aposta['_id']}):
+        nome = jogos_map.get(palpite['jogo'])
+        if nome:
+            palpites[nome] = '{} x {}'.format(palpite['gols_mandante'], palpite['gols_visitante'])
     return palpites
 
 
@@ -462,6 +464,7 @@ def valida_informacoes_bolao(form):
 
 
 def totaliza_pontuacao(id_aposta, campos, data_pontuacao=None):
+    """Sum pontuacao fields for a single aposta. Use totaliza_pontuacao_batch for bulk."""
     totais = {campo: 0 for campo in campos}
     for pontuacao in tbl_pontuacao.find({'aposta': id_aposta}):
         id_jogo = pontuacao['jogo']
@@ -469,6 +472,17 @@ def totaliza_pontuacao(id_aposta, campos, data_pontuacao=None):
         if data_pontuacao is None or jogo['data'] <= data_pontuacao:
             for campo in campos:
                 totais[campo] = totais[campo] + pontuacao[campo]
+    return totais
+
+
+def totaliza_pontuacao_batch(pontuacoes_list, jogos_data_map, campos, data_pontuacao=None):
+    """Sum pontuacao fields from pre-fetched documents — no DB queries."""
+    totais = {campo: 0 for campo in campos}
+    for pontuacao in pontuacoes_list:
+        jogo_data = jogos_data_map.get(pontuacao['jogo'])
+        if data_pontuacao is None or (jogo_data is not None and jogo_data <= data_pontuacao):
+            for campo in campos:
+                totais[campo] += pontuacao[campo]
     return totais
 
 
@@ -492,12 +506,16 @@ def incluiRanking(lista, campos, campo_ranking):
 
 
 def obtem_label(data):
-    jogos = []
-    for jogo in tbl_jogo.find({'data': data}):
-        mandante = tbl_selecao.find_one({'_id': jogo['mandante']})
-        visitante = tbl_selecao.find_one({'_id': jogo['visitante']})
-        jogos.append('{} x {}'.format(mandante['sigla'], visitante['sigla']))
-    return ','.join(jogos)
+    """Return label string for a round date using 2 queries (jogos + selecoes)."""
+    jogos_data = list(tbl_jogo.find({'data': data}))
+    if not jogos_data:
+        return ''
+    selecao_ids = [j['mandante'] for j in jogos_data] + [j['visitante'] for j in jogos_data]
+    selecoes = {s['_id']: s['sigla'] for s in tbl_selecao.find({'_id': {'$in': selecao_ids}})}
+    return ','.join(
+        '{} x {}'.format(selecoes.get(j['mandante'], '?'), selecoes.get(j['visitante'], '?'))
+        for j in jogos_data
+    )
 
 
 def obtem_horarios_rodadas():
@@ -557,28 +575,55 @@ def calcula_posicao(id_bolao, id_aposta, horario, horario_ultima_rodada):
 
 
 def monta_dto_apostas(bolao):
-    lista_retorno = []
+    """Build apostas DTO with ranking using O(4) queries instead of O(N*M)."""
     id_bolao = get_bolao_id(bolao)
     data_rodada_anterior = obtem_data_rodada_anterior()
     campos_banco = CAMPOS_PONTUACAO_BANCO
     campos_dto = CAMPOS_PONTUACAO_DTO
     campos_rodada_anterior = CAMPOS_PONTUACAO_ANTERIOR
-    for aposta in tbl_aposta.find({'bolao': id_bolao}):
-        usuario = tbl_usuario.find_one({'_id': aposta['usuario']})
+
+    apostas = list(tbl_aposta.find({'bolao': id_bolao}))
+    if not apostas:
+        return []
+
+    aposta_ids = [a['_id'] for a in apostas]
+
+    # 1 query: all usuarios
+    usuarios_map = {u['_id']: u for u in tbl_usuario.find(
+        {'_id': {'$in': [a['usuario'] for a in apostas]}}
+    )}
+
+    # 1 query: all pontuacoes for all apostas
+    pontuacoes_all = list(tbl_pontuacao.find({'aposta': {'$in': aposta_ids}}))
+    pontuacoes_by_aposta = {}
+    for p in pontuacoes_all:
+        pontuacoes_by_aposta.setdefault(p['aposta'], []).append(p)
+
+    # 1 query: all jogo dates (needed for date-filtered totals)
+    jogo_ids = list({p['jogo'] for p in pontuacoes_all})
+    jogos_data_map = {j['_id']: j['data'] for j in tbl_jogo.find(
+        {'_id': {'$in': jogo_ids}}, {'data': 1}
+    )}
+
+    lista_retorno = []
+    for aposta in apostas:
+        usuario = usuarios_map.get(aposta['usuario'], {})
         nova_aposta = {"id": aposta["_id"],
                        "nome": aposta["nome"],
                        "pago": aposta["pago"],
-                       "foto": usuario['foto']}
+                       "foto": usuario.get('foto', '')}
+        nova_aposta.update({'usuario_nome': usuario.get('nome', ''),
+                            'usuario_email': usuario.get('email', '')})
 
-        nova_aposta.update({'usuario_nome': usuario['nome'], 'usuario_email': usuario['email']})
+        ponts = pontuacoes_by_aposta.get(aposta['_id'], [])
 
-        pontuacao_totalizada = totaliza_pontuacao(aposta['_id'], campos_banco)
+        pontuacao_total = totaliza_pontuacao_batch(ponts, jogos_data_map, campos_banco)
         for i in range(len(campos_banco)):
-            nova_aposta[campos_dto[i]] = pontuacao_totalizada[campos_banco[i]]
+            nova_aposta[campos_dto[i]] = pontuacao_total[campos_banco[i]]
 
-        pontuacao_totalizada_rodada_anterior = totaliza_pontuacao(aposta['_id'], campos_banco, data_rodada_anterior)
+        pontuacao_ant = totaliza_pontuacao_batch(ponts, jogos_data_map, campos_banco, data_rodada_anterior)
         for i in range(len(campos_banco)):
-            nova_aposta[campos_rodada_anterior[i]] = pontuacao_totalizada_rodada_anterior[campos_banco[i]]
+            nova_aposta[campos_rodada_anterior[i]] = pontuacao_ant[campos_banco[i]]
 
         lista_retorno.append(nova_aposta)
 
