@@ -21,6 +21,11 @@ import logging
 sys.path.append(os.path.abspath('../../bolao'))
 
 from application.db_config import get_db_client
+from application.constants import (
+    PONTUACAO_PLACAR_EXATO,
+    PONTUACAO_VENCEDOR_OU_EMPATE,
+    PONTUACAO_GOLS_DE_UM_TIME,
+)
 import requests
 import re
 from bs4 import BeautifulSoup
@@ -31,11 +36,6 @@ from bson import ObjectId
 import argparse
 
 logger = logging.getLogger(__name__)
-
-# Scoring point values
-PONTUACAO_PLACAR_EXATO = 18       # Exact score (e.g., 2x1 guessed as 2x1)
-PONTUACAO_VENCEDOR_OU_EMPATE = 9  # Correct winner or draw
-PONTUACAO_GOLS_DE_UM_TIME = 3     # Correct goals for one team
 
 
 class Crawler:

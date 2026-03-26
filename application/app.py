@@ -15,6 +15,11 @@ from operator import itemgetter
 from bson import ObjectId
 
 from application.db_config import get_db_client
+from application.constants import (
+    CAMPOS_PONTUACAO_BANCO,
+    CAMPOS_PONTUACAO_DTO,
+    CAMPOS_PONTUACAO_ANTERIOR,
+)
 
 from flask_login import LoginManager, current_user, login_user, logout_user, login_required
 from application.oauth import OAuthSignIn
@@ -330,7 +335,7 @@ def calcula_posicao(id_bolao, id_aposta, horario, horario_ultima_rodada):
 
     posicao = None
     lista_retorno = []
-    campos = ('pontos', 'placar_exato', 'vencedor_ou_empate', 'gols_de_um_time')
+    campos = CAMPOS_PONTUACAO_BANCO
     for aposta in tbl_aposta.find({'bolao': id_bolao}):
         nova_aposta = {"id": str(aposta["_id"])}
         pontuacao_totalizada = totaliza_pontuacao(aposta['_id'], campos, horario)
@@ -518,10 +523,9 @@ def monta_dto_apostas(bolao):
     lista_retorno = []
     id_bolao = tbl_bolao.find_one({'nome': bolao})['_id']
     data_rodada_anterior = obtem_data_rodada_anterior()
-    campos_banco = ('pontos', 'placar_exato', 'vencedor_ou_empate', 'gols_de_um_time')
-
-    campos_dto = ('pontuacao', 'placar_exato', 'vencedor_ou_empate', 'gols_de_um_time')
-    campos_rodada_anterior = ('pontuacao_ant', 'placar_exato_ant', 'vencedor_ou_empate_ant', 'gols_de_um_time_ant')
+    campos_banco = CAMPOS_PONTUACAO_BANCO
+    campos_dto = CAMPOS_PONTUACAO_DTO
+    campos_rodada_anterior = CAMPOS_PONTUACAO_ANTERIOR
     for aposta in tbl_aposta.find({'bolao': id_bolao}):
 
         usuario = tbl_usuario.find_one({'_id': aposta['usuario']})
