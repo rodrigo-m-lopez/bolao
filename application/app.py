@@ -13,6 +13,7 @@ from flask import request
 from flask import render_template, redirect, url_for, session
 from operator import itemgetter
 from bson import ObjectId
+from urllib.parse import urlparse, urljoin
 
 from application.db_config import get_db_client
 from application.constants import (
@@ -253,26 +254,20 @@ def jogo(bolao, nome_jogo):
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    next_uri = request.args.get('next')
-    if next_uri is None:
-        next_uri = url_for('lista_bolao')
-    session['next'] = next_uri
+    session['next'] = safe_next('lista_bolao')
     return render_template('login.html')
 
 
 @app.route('/logout')
 def logout():
-    next_uri = request.args.get('next')
-    if next_uri is None:
-        next_uri = url_for('intro')
     logout_user()
-    return redirect(next_uri)
+    return redirect(safe_next('intro'))
 
 
 @app.route('/callback/<provider>')
 def oauth_callback(provider):
     next_uri = session.get('next')
-    if not next_uri:
+    if not next_uri or not is_safe_url(next_uri):
         next_uri = url_for('lista_bolao')
     if not current_user.is_anonymous:
         return redirect(next_uri)
@@ -301,7 +296,7 @@ def oauth_callback(provider):
 def oauth_authorize(provider):
     logger.debug('OAuth authorize session: %s', dict(session))
     next_uri = session.get('next')
-    if not next_uri:
+    if not next_uri or not is_safe_url(next_uri):
         next_uri = url_for('lista_bolao')
     if not current_user.is_anonymous:
         return redirect(next_uri)
@@ -361,6 +356,21 @@ def calcula_posicao(id_bolao, id_aposta, horario, horario_ultima_rodada):
             tbl_historico.insert_one(historico)
 
     return posicao
+
+def is_safe_url(target):
+    """Return True only if target points to the same host (prevents open redirect)."""
+    ref_url = urlparse(request.host_url)
+    test_url = urlparse(urljoin(request.host_url, target))
+    return test_url.scheme in ('http', 'https') and ref_url.netloc == test_url.netloc
+
+
+def safe_next(default_endpoint):
+    """Return a validated next URL from the request args, or the default endpoint URL."""
+    next_uri = request.args.get('next')
+    if next_uri and is_safe_url(next_uri):
+        return next_uri
+    return url_for(default_endpoint)
+
 
 def flash_errors(form):
     for field, errors in form.errors.items():
