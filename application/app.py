@@ -42,14 +42,17 @@ tbl_palpite = db.palpite
 tbl_pontuacao = db.pontuacao
 tbl_historico = db.historico
 
-if 'GOOGLE_OAUTH_CREDENTIAL_ID' not in os.environ or 'GOOGLE_OAUTH_CREDENTIAL_SECRET' not in os.environ:
-    raise Exception('Please create two environment variables for google oauth: ' \
-                    'GOOGLE_OAUTH_CREDENTIAL_ID and GOOGLE_OAUTH_CREDENTIAL_SECRET')
+_required_vars = ('GOOGLE_OAUTH_CREDENTIAL_ID', 'GOOGLE_OAUTH_CREDENTIAL_SECRET', 'FLASK_SECRET_KEY')
+_missing = [v for v in _required_vars if v not in os.environ]
+if _missing:
+    raise Exception(
+        'Variáveis de ambiente obrigatórias ausentes: {}'.format(', '.join(_missing))
+    )
 
 app = Flask(__name__)
-app.secret_key = os.environ['GOOGLE_OAUTH_CREDENTIAL_SECRET']  # can be any secret value
+app.secret_key = os.environ['FLASK_SECRET_KEY']
 app.config.from_object(__name__)
-SECRET_KEY = os.environ['GOOGLE_OAUTH_CREDENTIAL_SECRET']  # can be any secret value
+SECRET_KEY = app.secret_key
 
 app.config['OAUTH_CREDENTIALS'] = {
     'google': {

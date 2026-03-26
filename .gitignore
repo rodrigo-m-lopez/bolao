@@ -1,9 +1,13 @@
 application/.idea/
 application/__pycache__/
 application/teste_crawler/
+application/bolao.secrets.env
+application/*.env
 data/
 venv/
 \.idea/
-
+__pycache__/
+*.pyc
+.pytest_cache/
 
 Project/__pycache__/
