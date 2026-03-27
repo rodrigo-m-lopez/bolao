@@ -1,27 +1,35 @@
 {% extends 'base.html' %}
 
-{% block menu %}	  
-  <a class="navbar-brand" href="/lista_bolao">{{ bolao }}</a>
-  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
-	<span class="navbar-toggler-icon"></span>
-  </button>
-  <ul class="nav nav-tabs">	  
-	  <li class="nav-item">
-		<a class="nav-item nav-link{% if title == 'Ranking' %} active{% endif %}" href="{{ url_for('ranking', bolao=bolao) }}">Ranking</a>
-	  </li>
-	  {% if current_user.is_authenticated %}
-	  <li class="nav-item">
-		<a class="nav-item nav-link{% if title == 'Aposta' %} active{% endif %}" href="{{ url_for('nova_aposta', bolao=bolao) }}">Nova Aposta</a>
-	  </li>
-	  {% endif %}
-	  <li class="nav-item">
-		<a class="nav-item nav-link{% if title == 'Descrição Bolão' %} active{% endif %}" href="{{ url_for('descricao', bolao=bolao) }}">Descrição</a>
-	  </li>
-	  {% if current_user.is_authenticated and current_user.eh_criador_do_bolao(bolao) %}
-	  <li class="nav-item">
-		<a class="nav-item nav-link{% if title == 'Admin' %} active{% endif %}" href="{{ url_for('admin', bolao=bolao) }}">Admin</a>
-	  </li>	
-	  {% endif %}
-  </ul>
+{% block navbar_brand %}
+<a class="navbar-brand" href="/lista_bolao">
+  <img src="{{ url_for('static', filename='logo_alta_transparent.png') }}" alt="Copa 2026">
+  <span class="d-none d-sm-inline">{{ bolao }}</span>
+</a>
+{% endblock %}
 
+{% block navbar_nav %}
+<li class="nav-item">
+  <a class="nav-link {% if title == 'Ranking' %}active{% endif %}" href="{{ url_for('ranking', bolao=bolao) }}">
+    <i class="fa fa-list-ol"></i> Ranking
+  </a>
+</li>
+{% if current_user.is_authenticated %}
+<li class="nav-item">
+  <a class="nav-link {% if title == 'Aposta' or title == 'Editar Palpites' %}active{% endif %}" href="{{ url_for('nova_aposta', bolao=bolao) }}">
+    <i class="fa fa-pencil"></i> Apostar
+  </a>
+</li>
+{% endif %}
+<li class="nav-item">
+  <a class="nav-link {% if title == 'Descrição Bolão' %}active{% endif %}" href="{{ url_for('descricao', bolao=bolao) }}">
+    <i class="fa fa-info-circle"></i> Descrição
+  </a>
+</li>
+{% if current_user.is_authenticated and current_user.eh_criador_do_bolao(bolao) %}
+<li class="nav-item">
+  <a class="nav-link {% if title == 'Admin' %}active{% endif %}" href="{{ url_for('admin', bolao=bolao) }}">
+    <i class="fa fa-cog"></i> Admin
+  </a>
+</li>
+{% endif %}
 {% endblock %}

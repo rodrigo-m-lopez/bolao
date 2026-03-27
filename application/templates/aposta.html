@@ -1,67 +1,117 @@
 {% extends 'menu_base.html' %}
-
 {% set title = 'Aposta' %}
 
 {% block content %}
-<form method="POST" action="/{{ bolao }}/nova_aposta">
-<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-<div class="form-group" >
-	<input type="text" class="form-control" onblur="validaNome()" style="width: 52rem;" name="inputNome" id="inputNome" placeholder="Nome da Aposta" required>
-	<div id="erro"></div>
-</div>
-{% for grupo in grupos -%}
-<div class="card" style="width: 52rem;">
-  <div class="card-body">
-    <h5 class="card-title">{{ grupo.nome }}</h5>
-	{% for rodada in grupo.rodadas -%}
-		<h6 class="card-subtitle mb-2 text-muted">{{ rodada.nome }}</h6>
-		<p class="card-text">
-			{% for jogo in rodada.jogos -%}
-			<div class="container">
-				<div class="row no-gutters">
-					<div class="col-3" style="text-align: right;">
-						{{ jogo.nome_mandante }}
-						<img itemprop="image" src="{{ jogo.escudo_mandante}}" width="30" height="30">
-						<input id="{{ jogo.id_input_mandante }}" type="number" pattern="[0-9]*" class="form-control" name="{{ jogo.id_input_mandante }}" style="width:42px;height:30px;display:inline" required>						
-					</div>
-					<div class="col-1" style="text-align: center;">x</div>
-					<div class="col-3" style="text-align: left;">
-						<input id="{{ jogo.id_input_visitante }}" type="number" pattern="[0-9]*" class="form-control" name="{{ jogo.id_input_visitante }}" style="width:42px;height:30px;display:inline" required>
-						<img itemprop="image" src="{{ jogo.escudo_visitante}}" width="30" height="30">
-						{{ jogo.nome_visitante }}
-					</div>
-					<div class="col-2" style="text-align: center;">{{ jogo.data }}</div>
-					<div class="col-3" style="text-align: center;">{{ jogo.local }}</div>		
-				</div>
-			</div>
-			{% endfor %}
-		</p>
-	{% endfor %}
-  </div>	
-</div>
-  {% endfor %}
-<p><BR><button type="submit" class="btn btn-primary">ENVIAR</button></p>
-</form>
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-9 col-xl-8">
 
+    <form method="POST" action="/{{ bolao }}/nova_aposta">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <!-- Nome da aposta -->
+    <div class="card mb-3">
+      <div class="card-header"><i class="fa fa-user me-2"></i>Identificação</div>
+      <div class="card-body">
+        <div class="mb-0">
+          <input type="text" class="form-control" name="inputNome" id="inputNome"
+                 placeholder="Seu nome nesta aposta" required onblur="validaNome()">
+          <div id="erroNome" class="mt-1"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Aviso -->
+    <p class="text-muted small mb-3">
+      <i class="fa fa-info-circle me-1"></i>
+      Preencha os palpites abaixo. Jogos já iniciados estão bloqueados.
+      Você pode deixar campos em branco e preencher depois pelo link de edição.
+    </p>
+
+    <!-- Grupos / Rodadas -->
+    {% for grupo in grupos %}
+    <div class="card mb-3">
+      <div class="card-header">
+        <i class="fa fa-th-large me-2"></i>{{ grupo.nome }}
+      </div>
+      <div class="card-body">
+        {% for rodada in grupo.rodadas %}
+        <h6 class="text-muted fw-semibold mb-2 mt-3 first:mt-0">{{ rodada.nome }}</h6>
+        {% for jogo in rodada.jogos %}
+        <div class="game-row">
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+
+            <!-- Time mandante -->
+            <div class="d-flex align-items-center gap-1 flex-grow-1 justify-content-end" style="min-width:80px">
+              <span class="team-name text-end">{{ jogo.nome_mandante }}</span>
+              <img src="{{ jogo.escudo_mandante }}" class="team-flag" alt="{{ jogo.nome_mandante }}">
+            </div>
+
+            <!-- Inputs ou bloqueado -->
+            {% if jogo.bloqueado %}
+            <div class="d-flex align-items-center gap-1">
+              <span class="text-muted px-2">—</span>
+              <span class="vs-sep">x</span>
+              <span class="text-muted px-2">—</span>
+              <span class="badge-bloqueado">bloqueado</span>
+            </div>
+            {% else %}
+            <div class="d-flex align-items-center gap-1">
+              <input type="number" min="0" name="{{ jogo.id_input_mandante }}" id="{{ jogo.id_input_mandante }}"
+                     class="form-control score-input" placeholder="–">
+              <span class="vs-sep">x</span>
+              <input type="number" min="0" name="{{ jogo.id_input_visitante }}" id="{{ jogo.id_input_visitante }}"
+                     class="form-control score-input" placeholder="–">
+            </div>
+            {% endif %}
+
+            <!-- Time visitante -->
+            <div class="d-flex align-items-center gap-1 flex-grow-1" style="min-width:80px">
+              <img src="{{ jogo.escudo_visitante }}" class="team-flag" alt="{{ jogo.nome_visitante }}">
+              <span class="team-name">{{ jogo.nome_visitante }}</span>
+            </div>
+
+            <!-- Data/local -->
+            <div class="text-muted small text-nowrap ms-auto">
+              <i class="fa fa-clock-o me-1"></i>{{ jogo.data }}
+            </div>
+
+          </div>
+        </div>
+        {% endfor %}
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+
+    <div class="d-flex gap-2 flex-wrap">
+      <button type="submit" class="btn btn-primary px-4">
+        <i class="fa fa-check me-1"></i> Criar Aposta
+      </button>
+      <a href="{{ url_for('ranking', bolao=bolao) }}" class="btn btn-outline-secondary">Cancelar</a>
+    </div>
+
+    </form>
+  </div>
+</div>
 {% endblock %}
+
 {% block script %}
-<script>	
-	function validaNome() {
-	  var xhttp = new XMLHttpRequest();
-	  xhttp.onreadystatechange = function() {
-		if (this.readyState == 4 && this.status == 200) {
-		  document.getElementById("erro").innerHTML = montaAlerta(this.responseText);
-		  if (this.responseText > ''){
-			document.getElementById("inputNome").select();
-		  }
-		}
-	  };
-	  xhttp.open("POST", "/{{ bolao }}/valida_nome_aposta", true);
-	  xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-	  xhttp.setRequestHeader("X-CSRFToken", document.querySelector('meta[name="csrf-token"]').content);
-	  xhttp.send("nome_aposta=" + encodeURIComponent(document.getElementById("inputNome").value));
-	}
+<script>
+function validaNome() {
+  var val = document.getElementById('inputNome').value;
+  var el  = document.getElementById('erroNome');
+  if (!val.trim()) { el.innerHTML = ''; return; }
+  var xhr = new XMLHttpRequest();
+  xhr.onreadystatechange = function () {
+    if (this.readyState === 4 && this.status === 200) {
+      el.innerHTML = montaAlerta(this.responseText);
+      if (this.responseText) document.getElementById('inputNome').select();
+    }
+  };
+  xhr.open('POST', '/{{ bolao }}/valida_nome_aposta', true);
+  xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+  xhr.setRequestHeader('X-CSRFToken', document.querySelector('meta[name="csrf-token"]').content);
+  xhr.send('nome_aposta=' + encodeURIComponent(val));
+}
 </script>
-
 {% endblock %}
-    

@@ -1,102 +1,139 @@
 {% extends 'menu_base.html' %}
+{% set title = 'Admin' %}
 
 {% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-xl-10">
 
+    <!-- Zona de perigo -->
+    <div class="card border-danger mb-4">
+      <div class="card-header bg-danger text-white">
+        <i class="fa fa-exclamation-triangle me-2"></i>Zona de Perigo
+      </div>
+      <div class="card-body d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div>
+          <strong>Remover este bolão</strong>
+          <p class="mb-0 text-muted small">Esta ação é irreversível. Todas as apostas serão excluídas.</p>
+        </div>
+        <button type="button" class="btn btn-danger"
+                data-bs-toggle="modal" data-bs-target="#confirmDelete">
+          <i class="fa fa-trash me-1"></i> Remover Bolão
+        </button>
+      </div>
+    </div>
 
-<div class="card mt-5 w-75">
-  <div class="card-body">
-    <h5 class="card-title">Cuidado ao remover o bolao. Nao existe volta!</h5>
-	<input type="button" class="btn btn-danger btn-sm" name="btnRemoverBolao" value="Remover Bolão" id="submitBtn" data-toggle="modal" data-target="#confirm-submit" class="btn btn-default" />
+    <!-- Tabela de apostas -->
+    <div class="card">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <span><i class="fa fa-users me-2"></i>Apostas — {{ lista_apostas|length }} participantes</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover table-sm mb-0">
+          <thead>
+            <tr>
+              <th class="text-center" style="width:40px">#</th>
+              <th>Apostador</th>
+              <th class="d-none d-md-table-cell">Email</th>
+              <th>Nome da Aposta</th>
+              <th class="text-center">Pagamento</th>
+              <th class="text-center" style="width:60px"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for aposta in lista_apostas %}
+            <tr class="{% if not aposta.pago %}table-warning{% endif %}">
+              <td class="text-center text-muted">{{ loop.index }}</td>
+              <td>
+                {% if aposta.foto %}
+                <img src="{{ aposta.foto }}" width="24" height="24" class="rounded-circle me-1" style="object-fit:cover">
+                {% endif %}
+                {{ aposta.usuario_nome }}
+              </td>
+              <td class="d-none d-md-table-cell text-muted small">{{ aposta.usuario_email }}</td>
+              <td class="fw-semibold">{{ aposta.nome }}</td>
+              <td class="text-center">
+                {% if not aposta.pago %}
+                <button type="button" class="btn btn-sm btn-outline-success"
+                        name="{{ aposta.nome }}" onclick="togglePago(this)">
+                  <i class="fa fa-check me-1"></i>Marcar pago
+                </button>
+                {% else %}
+                <button type="button" class="btn btn-sm btn-success"
+                        name="{{ aposta.nome }}" onclick="togglePago(this)">
+                  <i class="fa fa-check-circle me-1"></i>Pago
+                </button>
+                {% endif %}
+              </td>
+              <td class="text-center">
+                <button type="button" class="btn btn-sm btn-outline-danger"
+                        name="{{ aposta.nome }}" onclick="removerAposta(this)"
+                        title="Remover aposta">
+                  <i class="fa fa-trash"></i>
+                </button>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="text-center text-muted py-4">Nenhuma aposta ainda.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
   </div>
 </div>
 
-<div class="modal fade" id="confirm-submit" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                Confirmar deleção
-            </div>
-            <div class="modal-body">
-                Deseja realmente deletar este bolão?
-			</div>	
-			<div class="modal-footer">
-				<button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
-				<form method="post" action="/{{ bolao }}/remover_bolao" class="inline">
-				  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-				  <button type="submit" class="btn btn-success success">Confirmar</button>
-				</form>
-			</div>
-		</div>
+<!-- Modal confirmar deleção do bolão -->
+<div class="modal fade" id="confirmDelete" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow rounded-3">
+      <div class="modal-header bg-danger text-white rounded-top-3">
+        <h6 class="modal-title mb-0"><i class="fa fa-exclamation-triangle me-2"></i>Confirmar exclusão</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        Tem certeza que deseja remover o bolão <strong>{{ bolao }}</strong>?<br>
+        <span class="text-danger small">Esta ação não pode ser desfeita.</span>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <form method="post" action="/{{ bolao }}/remover_bolao" class="d-inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-danger btn-sm">
+            <i class="fa fa-trash me-1"></i>Remover
+          </button>
+        </form>
+      </div>
     </div>
+  </div>
 </div>
-
- <div class="card mt-5 w-75">
-    <table class="table table-striped table-sm text-center table-hover table-bordered "align="center">
-        <thead>
-        <tr>
-          <th scope="col">#</th>
-          <th scope="col">Nome Usuario</th>
-          <th scope="col">Email Usuario</th>
-          <th scope="col">Nome Aposta</th>
-          <th scope="col"></th>
-          <th scope="col"></th>
-        </tr>
-      </thead>
-      <tbody>
-    {% for aposta in lista_apostas -%}
-        <tr>
-          <td scope="row">{{loop.index}}</td>
-
-          <td>{{ aposta.usuario_nome }}</td>
-          <td>{{ aposta.usuario_email }}</td>
-          <td>{{ aposta.nome }}</td>
-
-          {% if not aposta.pago %}
-          <td><button type="button" class="btn btn-primary btn-sm" name ="{{ aposta.nome }}" onclick="togglePago(this)">Marcar como pago</button></td>
-          {% else %}
-          <td><button type="button" class="btn btn-success btn-sm" name ="{{ aposta.nome }}" onclick="togglePago(this)">Pago</button></td>
-          {% endif %}
-
-          <td><button type="button" class="btn btn-danger btn-sm" name ="{{ aposta.nome }}" onclick="removerAposta(this)">Remover Aposta</button></td>
-
-        </tr>
-    {% endfor %}
-       </tbody>
-    </table>
- </div>
-
 {% endblock %}
 
 {% block script %}
 <script>
-	function removerAposta(sender) {
-	if (confirm('Confirma deleção da aposta '+ sender.name + '?')) {
-		  var xhttp = new XMLHttpRequest();
-		  xhttp.open("POST", "/{{ bolao }}/remover_aposta", true);
-		  xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-		  xhttp.setRequestHeader("X-CSRFToken", document.querySelector('meta[name="csrf-token"]').content);
-		  xhttp.onreadystatechange = function() {
-				if (this.readyState == 4 && this.status == 200) {
-					window.location.reload();
-				}
-			};
-		  xhttp.send("nome_aposta=" + encodeURIComponent(sender.name));
-		}
-	}
+var CSRF = document.querySelector('meta[name="csrf-token"]').content;
 
-    function togglePago(sender) {
-        var xhttp = new XMLHttpRequest();
-        xhttp.open("POST", "/{{ bolao }}/toggle_pago", true);
-        xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-        xhttp.setRequestHeader("X-CSRFToken", document.querySelector('meta[name="csrf-token"]').content);
-        xhttp.onreadystatechange = function() {
-            if (this.readyState == 4 && this.status == 200) {
-                window.location.reload();
-            }
-        };
-        xhttp.send("nome_aposta=" + encodeURIComponent(sender.name));
-    }
+function removerAposta(btn) {
+  if (!confirm('Remover a aposta "' + btn.name + '"?')) return;
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST', '/{{ bolao }}/remover_aposta', true);
+  xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+  xhr.setRequestHeader('X-CSRFToken', CSRF);
+  xhr.onreadystatechange = function () {
+    if (this.readyState === 4 && this.status === 200) window.location.reload();
+  };
+  xhr.send('nome_aposta=' + encodeURIComponent(btn.name));
+}
+
+function togglePago(btn) {
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST', '/{{ bolao }}/toggle_pago', true);
+  xhr.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+  xhr.setRequestHeader('X-CSRFToken', CSRF);
+  xhr.onreadystatechange = function () {
+    if (this.readyState === 4 && this.status === 200) window.location.reload();
+  };
+  xhr.send('nome_aposta=' + encodeURIComponent(btn.name));
+}
 </script>
 {% endblock %}
-
-{% set title = 'Admin' %}

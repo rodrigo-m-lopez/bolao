@@ -1,13 +1,40 @@
 {% extends 'menu_gerencia_bolao.html' %}
+{% set title = 'Bolões' %}
 
 {% block content %}
-<ul class="list-group" style="width: 25rem;">
-<li class="list-group-item list-group-item-dark d-flex justify-content-between align-items-center">
-    <strong>Nome</strong>
-</ul>
-{% for bolao in lista_boloes -%}
-  <a href="{{ bolao.nome }}/ranking" class="list-group-item list-group-item-action" style="width: 25rem;">{{ bolao.nome }}</a>
-{% endfor %}
+<div class="row justify-content-center">
+  <div class="col-12 col-md-8 col-lg-6">
+    <div class="card">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <span><i class="fa fa-trophy me-2"></i>Bolões disponíveis</span>
+        {% if current_user.is_authenticated %}
+        <a href="/novo_bolao" class="btn btn-sm btn-light fw-semibold">
+          <i class="fa fa-plus"></i> Novo
+        </a>
+        {% endif %}
+      </div>
+      <div class="card-body p-0">
+        {% if lista_boloes %}
+        <div class="list-group list-group-flush">
+          {% for bolao in lista_boloes %}
+          <a href="{{ bolao.nome }}/ranking" class="list-group-item list-group-item-action d-flex align-items-center py-3">
+            <i class="fa fa-futbol-o me-3 text-success"></i>
+            <span class="fw-semibold">{{ bolao.nome }}</span>
+            <i class="fa fa-chevron-right ms-auto text-muted"></i>
+          </a>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-5">
+          <i class="fa fa-inbox fa-2x mb-2 d-block"></i>
+          Nenhum bolão cadastrado ainda.
+          {% if current_user.is_authenticated %}
+          <br><a href="/novo_bolao" class="btn btn-primary btn-sm mt-3">Criar o primeiro bolão</a>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
-
-{% set title = 'Bolões' %}

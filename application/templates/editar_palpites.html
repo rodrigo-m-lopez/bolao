@@ -1,0 +1,188 @@
+{% extends 'menu_base.html' %}
+{% set title = 'Editar Palpites' %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-9 col-xl-8">
+
+    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+      <div>
+        <h5 class="mb-0 fw-bold">{{ nome_aposta }}</h5>
+        <p class="text-muted small mb-0">
+          <i class="fa fa-info-circle me-1"></i>
+          Preencha ou edite palpites. Jogos já iniciados estão bloqueados.
+        </p>
+      </div>
+      <button id="btn-salvar" class="btn btn-primary px-4" onclick="salvarTodos()">
+        <i class="fa fa-save me-1"></i> Salvar Palpites
+      </button>
+    </div>
+
+    <div id="msg-resultado" class="alert d-none mb-3" role="alert"></div>
+
+    {% for grupo in grupos %}
+    <div class="card mb-3">
+      <div class="card-header"><i class="fa fa-th-large me-2"></i>{{ grupo.nome }}</div>
+      <div class="card-body">
+
+        {% for rodada in grupo.rodadas %}
+        <h6 class="text-muted fw-semibold mb-2 mt-3 first:mt-0">{{ rodada.nome }}</h6>
+        {% for jogo in rodada.jogos %}
+          {% set jid = jogo._id | string %}
+          {% set p   = palpites_map.get(jid) %}
+          <div class="game-row jogo-row"
+               id="jogo-{{ jid }}"
+               data-jogo-id="{{ jid }}"
+               data-bloqueado="{{ 'true' if jogo.bloqueado else 'false' }}">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+
+              <!-- Mandante -->
+              <div class="d-flex align-items-center gap-1 flex-grow-1 justify-content-end" style="min-width:80px">
+                <span class="team-name text-end">{{ jogo.nome_mandante }}</span>
+                <img src="{{ jogo.escudo_mandante }}" class="team-flag" alt="{{ jogo.nome_mandante }}">
+              </div>
+
+              <!-- Placar -->
+              <div class="placar-area d-flex align-items-center gap-1">
+                {% if jogo.bloqueado %}
+                  {% if p %}
+                    <span class="fw-bold">{{ p.gols_mandante }}</span>
+                    <span class="vs-sep">x</span>
+                    <span class="fw-bold">{{ p.gols_visitante }}</span>
+                  {% else %}
+                    <span class="text-muted">—</span>
+                    <span class="vs-sep">x</span>
+                    <span class="text-muted">—</span>
+                  {% endif %}
+                  <span class="badge-bloqueado ms-1">bloqueado</span>
+                {% else %}
+                  <input type="number" min="0" class="form-control score-input"
+                         id="m-{{ jid }}" value="{{ p.gols_mandante if p else '' }}" placeholder="–">
+                  <span class="vs-sep">x</span>
+                  <input type="number" min="0" class="form-control score-input"
+                         id="v-{{ jid }}" value="{{ p.gols_visitante if p else '' }}" placeholder="–">
+                {% endif %}
+              </div>
+
+              <!-- Visitante -->
+              <div class="d-flex align-items-center gap-1 flex-grow-1" style="min-width:80px">
+                <img src="{{ jogo.escudo_visitante }}" class="team-flag" alt="{{ jogo.nome_visitante }}">
+                <span class="team-name">{{ jogo.nome_visitante }}</span>
+              </div>
+
+              <!-- Data -->
+              <div class="text-muted small text-nowrap ms-auto">
+                <i class="fa fa-clock-o me-1"></i>{{ jogo.data }}
+              </div>
+
+            </div>
+          </div>
+        {% endfor %}
+        {% endfor %}
+
+      </div>
+    </div>
+    {% endfor %}
+
+    <div class="d-flex gap-2 flex-wrap mb-4">
+      <button id="btn-salvar-bottom" class="btn btn-primary px-4" onclick="salvarTodos()">
+        <i class="fa fa-save me-1"></i> Salvar Palpites
+      </button>
+      <a href="/{{ bolao }}/ranking" class="btn btn-outline-secondary">Ver Ranking</a>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+var BOLAO       = {{ bolao | tojson }};
+var NOME_APOSTA = {{ nome_aposta | tojson }};
+
+function salvarTodos() {
+  var palpites = [];
+  document.querySelectorAll('.jogo-row').forEach(function (row) {
+    if (row.dataset.bloqueado === 'true') return;
+    var jid = row.dataset.jogoId;
+    var mEl = document.getElementById('m-' + jid);
+    var vEl = document.getElementById('v-' + jid);
+    if (!mEl || !vEl) return;
+    var gm = mEl.value.trim();
+    var gv = vEl.value.trim();
+    if (gm !== '' || gv !== '') {
+      palpites.push({ id_jogo: jid, gols_mandante: gm, gols_visitante: gv });
+    }
+  });
+
+  if (palpites.length === 0) {
+    mostrarMensagem('warning', '<i class="fa fa-exclamation-triangle me-2"></i>Nenhum palpite preenchido para salvar.');
+    return;
+  }
+
+  setBtns(true);
+
+  fetch('/' + encodeURIComponent(BOLAO) + '/salvar_palpites/' + encodeURIComponent(NOME_APOSTA), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+    },
+    body: JSON.stringify(palpites)
+  })
+  .then(function (r) { return r.json(); })
+  .then(function (data) {
+    (data.bloqueados || []).forEach(function (b) { bloquearJogoNaTela(b.id_jogo); });
+
+    var nS = (data.salvos    || []).length;
+    var nB = (data.bloqueados|| []).length;
+    var nE = (data.erros     || []).length;
+    var partes = [];
+    if (nS) partes.push('<i class="fa fa-check-circle me-1"></i>' + nS + (nS === 1 ? ' palpite salvo.' : ' palpites salvos.'));
+    if (nB) partes.push('<i class="fa fa-lock me-1"></i>' + nB + (nB === 1 ? ' jogo já iniciado, não foi salvo.' : ' jogos já iniciados, não foram salvos.'));
+    if (nE) partes.push('<i class="fa fa-times-circle me-1"></i>' + nE + (nE === 1 ? ' placar inválido.' : ' placares inválidos.'));
+
+    var tipo = nS > 0 ? 'success' : (nB > 0 ? 'warning' : 'danger');
+    mostrarMensagem(tipo, partes.join(' '));
+  })
+  .catch(function () {
+    mostrarMensagem('danger', '<i class="fa fa-wifi me-1"></i>Erro de conexão. Tente novamente.');
+  })
+  .finally(function () { setBtns(false); });
+}
+
+function setBtns(loading) {
+  ['btn-salvar', 'btn-salvar-bottom'].forEach(function (id) {
+    var b = document.getElementById(id);
+    if (!b) return;
+    b.disabled = loading;
+    b.innerHTML = loading
+      ? '<i class="fa fa-spinner fa-spin me-1"></i> Salvando…'
+      : '<i class="fa fa-save me-1"></i> Salvar Palpites';
+  });
+}
+
+function bloquearJogoNaTela(jogoId) {
+  var row = document.getElementById('jogo-' + jogoId);
+  if (!row) return;
+  row.dataset.bloqueado = 'true';
+  var area = row.querySelector('.placar-area');
+  if (!area) return;
+  var gm = document.getElementById('m-' + jogoId);
+  var gv = document.getElementById('v-' + jogoId);
+  var gms = gm ? gm.value : '';
+  var gvs = gv ? gv.value : '';
+  var placar = (gms !== '' && gvs !== '')
+    ? '<span class="fw-bold">' + gms + '</span><span class="vs-sep mx-1">x</span><span class="fw-bold">' + gvs + '</span>'
+    : '<span class="text-muted">—</span><span class="vs-sep mx-1">x</span><span class="text-muted">—</span>';
+  area.innerHTML = placar + ' <span class="badge-bloqueado ms-1">bloqueado</span>';
+}
+
+function mostrarMensagem(tipo, html) {
+  var el = document.getElementById('msg-resultado');
+  el.className = 'alert alert-' + tipo + ' mb-3';
+  el.innerHTML = html;
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+</script>
+{% endblock %}

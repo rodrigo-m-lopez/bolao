@@ -1,19 +1,33 @@
 {% extends 'base.html' %}
+{% set title = 'Login' %}
 
 {% block content %}
-        {% if not current_user.is_authenticated %}
-            {% if config.DEV_MOCK_AUTH %}
-            <div style="background:#fff3cd;border:1px solid #ffc107;padding:12px 16px;border-radius:6px;margin-bottom:16px;max-width:360px;">
-                <strong>&#9888; Modo desenvolvimento</strong><br>
-                <small>Autenticação Google desabilitada. Não use em produção.</small>
-            </div>
-            <a href="{{ url_for('dev_login') }}" style="display:inline-block;padding:10px 20px;background:#4285f4;color:#fff;border-radius:4px;text-decoration:none;font-weight:bold;">
-                &#128100; Entrar como Dev User
-            </a>
-            {% else %}
-            <a href={{ url_for('oauth_authorize', provider='google') }}><img src="{{ url_for('static', filename='sign-in-with-google.png') }}" /></a>
-            {% endif %}
-        {% endif %}
-{% endblock %}
+<div class="row justify-content-center mt-4">
+  <div class="col-12 col-sm-10 col-md-6 col-lg-4">
+    <div class="card shadow-sm">
+      <div class="card-body text-center p-5">
+        <img src="{{ url_for('static', filename='logo_alta_transparent.png') }}" alt="Copa 2026" class="mb-4" style="height:90px">
+        <h5 class="fw-bold mb-1">Bolão da Copa 2026</h5>
+        <p class="text-muted small mb-4">EUA · Canadá · México</p>
 
-{% set title = 'Login' %}
+        {% if not current_user.is_authenticated %}
+          {% if config.DEV_MOCK_AUTH %}
+          <div class="alert alert-warning text-start small mb-4">
+            <strong><i class="fa fa-exclamation-triangle"></i> Modo desenvolvimento</strong><br>
+            Autenticação Google desabilitada.
+          </div>
+          <a href="{{ url_for('dev_login') }}" class="btn btn-primary w-100 py-2">
+            <i class="fa fa-user"></i> Entrar como Dev User
+          </a>
+          {% else %}
+          <p class="text-muted mb-3">Entre com sua conta Google para participar</p>
+          <a href="{{ url_for('oauth_authorize', provider='google') }}" class="d-inline-block">
+            <img src="{{ url_for('static', filename='sign-in-with-google.png') }}" alt="Entrar com Google" style="height:46px">
+          </a>
+          {% endif %}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

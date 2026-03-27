@@ -1,17 +1,21 @@
 {% extends 'base.html' %}
 
-{% block menu %}	  
-  <ul class="nav nav-tabs">
-	  <li class="nav-item">
-		<a class="nav-item nav-link{% if title == 'Intro' %} active{% endif %}" href="/intro">Intro</a>
-	  </li>
-	  <li class="nav-item">
-		<a class="nav-item nav-link{% if title == 'Bolões' %} active{% endif %}" href="/lista_bolao">Bolões</a>
-	  </li>
-	  {% if current_user.is_authenticated %}
-	  <li class="nav-item">
-		<a class="nav-item nav-link{% if title == 'Novo Bolão' %} active{% endif %}" href="/novo_bolao">Novo Bolão</a>
-	  </li>
-	  {% endif %}
-	</ul>
+{% block navbar_nav %}
+<li class="nav-item">
+  <a class="nav-link {% if title == 'Intro' %}active{% endif %}" href="/intro">
+    <i class="fa fa-home"></i> Início
+  </a>
+</li>
+<li class="nav-item">
+  <a class="nav-link {% if title == 'Bolões' %}active{% endif %}" href="/lista_bolao">
+    <i class="fa fa-trophy"></i> Bolões
+  </a>
+</li>
+{% if current_user.is_authenticated %}
+<li class="nav-item">
+  <a class="nav-link {% if title == 'Novo Bolão' %}active{% endif %}" href="/novo_bolao">
+    <i class="fa fa-plus-circle"></i> Novo Bolão
+  </a>
+</li>
+{% endif %}
 {% endblock %}

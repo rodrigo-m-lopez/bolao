@@ -8,7 +8,8 @@ sys.path.append(os.path.abspath('../../bolao'))
 
 import bisect
 import pymongo
-from flask import Flask, flash
+from datetime import datetime
+from flask import Flask, flash, jsonify, abort
 from flask import request
 from flask import render_template, redirect, url_for, session
 from operator import itemgetter
@@ -61,6 +62,10 @@ if _missing:
     raise Exception(
         'Variáveis de ambiente obrigatórias ausentes: {}'.format(', '.join(_missing))
     )
+
+if DEV_MOCK_AUTH:
+    from application.dev_seed import populate_dev_db
+    populate_dev_db(db)
 
 app = Flask(__name__)
 app.secret_key = os.environ['FLASK_SECRET_KEY']
@@ -128,10 +133,10 @@ def nova_aposta(bolao):
             id_aposta = insere_aposta(nome_aposta, id_bolao)
             insere_palpites(id_aposta, request.form, todos_jogos)
             insere_pontuacoes(id_aposta, todos_jogos)
-            return ranking(bolao)
+            return redirect(url_for('editar_palpites', bolao=bolao, nome_aposta=nome_aposta))
         else:
             flash('Já existe uma aposta para este bolão com o nome [{}]. Escolha outro.'.format(nome_aposta))
-            return render_template('nova_aposta.html', bolao=bolao, grupos=grupos)
+            return render_template('aposta.html', bolao=bolao, grupos=grupos)
 
 
 @app.route('/<bolao>/descricao_bolao')
@@ -256,13 +261,115 @@ def jogo(bolao, nome_jogo):
     pontuacoes = {}
     for aposta in apostas:
         palpite_jogo = tbl_palpite.find_one({'aposta': aposta['id'], 'jogo': jogo_dto['_id']})
-        palpites[aposta['nome']] = '{} x {}'.format(palpite_jogo['gols_mandante'], palpite_jogo['gols_visitante'])
+        if palpite_jogo:
+            palpites[aposta['nome']] = '{} x {}'.format(palpite_jogo['gols_mandante'], palpite_jogo['gols_visitante'])
+        else:
+            palpites[aposta['nome']] = '- x -'
         pontuacao_jogo = tbl_pontuacao.find_one({'aposta': aposta['id'], 'jogo': jogo_dto['_id']})
         pontuacoes[aposta['nome']] = pontuacao_jogo['pontos']
     apostas.sort(key=lambda a: a['nome'])
     apostas.sort(key=lambda a: pontuacoes[a['nome']], reverse=True)
     return render_template('jogos.html', bolao=bolao, jogo=jogo_dto, palpites=palpites,
                            apostas=apostas, placar=placar, pontuacoes=pontuacoes)
+
+
+@app.route('/<bolao>/editar_palpites/<nome_aposta>')
+@login_required
+def editar_palpites(bolao, nome_aposta):
+    id_bolao = get_bolao_id(bolao)
+    aposta = get_aposta_by_nome(nome_aposta, id_bolao)
+    grupos, todos_jogos = monta_dto_grupos()
+    palpites_map = {str(p['jogo']): p for p in tbl_palpite.find({'aposta': aposta['_id']})}
+    return render_template('editar_palpites.html', bolao=bolao, nome_aposta=nome_aposta,
+                           grupos=grupos, palpites_map=palpites_map)
+
+
+@app.route('/<bolao>/salvar_palpites/<nome_aposta>', methods=['POST'])
+@login_required
+def salvar_palpites(bolao, nome_aposta):
+    """Salva palpites de múltiplos jogos em uma única requisição.
+
+    Recebe JSON: [{"id_jogo": "...", "gols_mandante": N, "gols_visitante": N}, ...]
+    Valida jogo a jogo no servidor, bloqueando os que já iniciaram.
+    Retorna: {"salvos": [...ids], "bloqueados": [...{id_jogo, nome}], "erros": [...{id_jogo, erro}]}
+    """
+    id_bolao = get_bolao_id(bolao)
+    aposta = get_aposta_by_nome(nome_aposta, id_bolao)
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, list):
+        return jsonify({'erro': 'Formato inválido.'}), 400
+
+    salvos = []
+    bloqueados = []
+    erros = []
+
+    for item in payload:
+        id_jogo_str = str(item.get('id_jogo', ''))
+        gols_m_str  = str(item.get('gols_mandante', '')).strip()
+        gols_v_str  = str(item.get('gols_visitante', '')).strip()
+
+        try:
+            id_jogo = ObjectId(id_jogo_str)
+        except Exception:
+            erros.append({'id_jogo': id_jogo_str, 'erro': 'ID de jogo inválido.'})
+            continue
+
+        jogo_doc = tbl_jogo.find_one({'_id': id_jogo})
+        if jogo_doc is None:
+            erros.append({'id_jogo': id_jogo_str, 'erro': 'Jogo não encontrado.'})
+            continue
+
+        if jogo_ja_iniciou(jogo_doc['data']):
+            bloqueados.append({'id_jogo': id_jogo_str, 'nome': jogo_doc.get('nome', '')})
+            continue
+
+        try:
+            gm, gv = int(gols_m_str), int(gols_v_str)
+            if gm < 0 or gv < 0:
+                raise ValueError('negative')
+        except ValueError:
+            erros.append({'id_jogo': id_jogo_str, 'erro': 'Placar inválido.'})
+            continue
+
+        tbl_palpite.update_one(
+            {'aposta': aposta['_id'], 'jogo': id_jogo},
+            {'$set': {'gols_mandante': gm, 'gols_visitante': gv}},
+            upsert=True
+        )
+        salvos.append(id_jogo_str)
+
+    return jsonify({'salvos': salvos, 'bloqueados': bloqueados, 'erros': erros})
+
+
+@app.route('/<bolao>/salvar_palpite/<nome_aposta>', methods=['POST'])
+@login_required
+def salvar_palpite(bolao, nome_aposta):
+    id_bolao = get_bolao_id(bolao)
+    aposta = get_aposta_by_nome(nome_aposta, id_bolao)
+    id_jogo_str = request.form.get('id_jogo', '')
+    gols_m_str = request.form.get('gols_mandante', '').strip()
+    gols_v_str = request.form.get('gols_visitante', '').strip()
+    try:
+        id_jogo = ObjectId(id_jogo_str)
+    except Exception:
+        return jsonify({'ok': False, 'erro': 'Jogo inválido.'}), 400
+    jogo_doc = tbl_jogo.find_one({'_id': id_jogo})
+    if jogo_doc is None:
+        return jsonify({'ok': False, 'erro': 'Jogo não encontrado.'}), 404
+    if jogo_ja_iniciou(jogo_doc['data']):
+        return jsonify({'ok': False, 'erro': 'Este jogo já começou. Palpite bloqueado.'}), 403
+    try:
+        gm, gv = int(gols_m_str), int(gols_v_str)
+        if gm < 0 or gv < 0:
+            raise ValueError('negative')
+    except ValueError:
+        return jsonify({'ok': False, 'erro': 'Placar inválido.'}), 400
+    tbl_palpite.update_one(
+        {'aposta': aposta['_id'], 'jogo': id_jogo},
+        {'$set': {'gols_mandante': gm, 'gols_visitante': gv}},
+        upsert=True
+    )
+    return jsonify({'ok': True})
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -362,6 +469,11 @@ def chart(bolao, id_aposta):
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
+
+def jogo_ja_iniciou(jogo_data_utc):
+    """Returns True if the match has already started, using server UTC time."""
+    return datetime.utcnow() >= jogo_data_utc
+
 
 def get_bolao_id(nome_bolao):
     """Return the ObjectId of a bolão by name, or abort 404."""
@@ -691,13 +803,19 @@ def insere_pontuacoes(id_aposta, todos_jogos):
 
 def insere_palpites(id_aposta, form, todos_jogos):
     for jogo in todos_jogos:
+        if jogo_ja_iniciou(jogo["date_time"]):
+            continue
         id_jogo = jogo["_id"]
-        id_mandante_form = 'm{0}'.format(str(id_jogo))
-        id_visitante_form = 'v{0}'.format(str(id_jogo))
-        tbl_palpite.insert_one({'aposta': id_aposta,
-                                'jogo': id_jogo,
-                                'gols_mandante': int(form[id_mandante_form]),
-                                'gols_visitante': int(form[id_visitante_form])})
+        gols_m_str = form.get('m{}'.format(str(id_jogo)), '').strip()
+        gols_v_str = form.get('v{}'.format(str(id_jogo)), '').strip()
+        if gols_m_str == '' or gols_v_str == '':
+            continue
+        try:
+            gm, gv = int(gols_m_str), int(gols_v_str)
+        except ValueError:
+            continue
+        tbl_palpite.insert_one({'aposta': id_aposta, 'jogo': id_jogo,
+                                'gols_mandante': gm, 'gols_visitante': gv})
 
 
 def aposta_ja_existe(nome_aposta, id_bolao):
@@ -719,7 +837,8 @@ def monta_dto_jogo(jogo):
             "id_input_visitante": 'v{0}'.format(str(jogo["_id"])),
             "data": jogo["data"].strftime('%d/%m %H:%M'),
             "date_time": jogo["data"],
-            "local": jogo["local"]}
+            "local": jogo["local"],
+            "bloqueado": jogo_ja_iniciou(jogo["data"])}
 
 
 def inclui_jogo_na_lista_rodadas(lista_rodadas, jogo, todos_jogos):

@@ -1,52 +1,39 @@
 {% extends 'menu_base.html' %}
+{% set title = 'Descrição Bolão' %}
 
 {% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-md-8 col-lg-6">
+    <div class="card">
+      <div class="card-header"><i class="fa fa-info-circle me-2"></i>Descrição do Bolão</div>
+      <div class="card-body">
+        <dl class="row mb-0">
 
- <div class="card card-outline-secondary">
-	<div class="card-header">
-		<h3 class="mb-0">Descrição do Bolão</h3>
-	</div>
-	<div class="card-body">
-		<form>
-			<div class="form-group row">
-				<label for="inputNome" class="col-sm-2 col-form-label font-weight-bold">Nome</label>
-				<input type="text" readonly class="form-control col-sm-4" style="width: 52rem;" value="{{bolao_selecionado.nome}}" id="inputNome">
-			</div>
+          <dt class="col-sm-4">Nome</dt>
+          <dd class="col-sm-8">{{ bolao_selecionado.nome }}</dd>
 
-			<div class="form-group row">
-				<label for="inputResponsavel" class="col-sm-2 col-form-label font-weight-bold">Responsável</label>
-				<input type="text" readonly class="form-control col-sm-4" style="width: 52rem;" value="{{responsavel.nome}}" id="inputResponsavel">
-			</div>
+          <dt class="col-sm-4">Responsável</dt>
+          <dd class="col-sm-8">{{ responsavel.nome }}</dd>
 
-			<div class="form-group row">
-				<label for="inputEmail" class="col-sm-2 col-form-label font-weight-bold">Email</label>
-				<input type="text" readonly class="form-control col-sm-4" style="width: 52rem;" value="{{responsavel.email}}" id="inputEmail">
-			</div>
+          <dt class="col-sm-4">Email</dt>
+          <dd class="col-sm-8">
+            <a href="mailto:{{ responsavel.email }}">{{ responsavel.email }}</a>
+          </dd>
 
-			<div class="form-group row">
-				<label for="inputValor" class="col-sm-2 col-form-label font-weight-bold">Valor do Bolão</label>
-				<div class="input-group mb-3" style="width: 52rem;">
-					<div class="input-group-prepend">
-						<span class="input-group-text">R$</span>
-					</div>
+          <dt class="col-sm-4">Valor</dt>
+          <dd class="col-sm-8">R$ {{ bolao_selecionado.valor }},00</dd>
 
-					<input type="text" readonly class="form-control col-sm-4" style="width: 52rem;" value="{{bolao_selecionado.valor}}" id="inputValor">
-				</div>
-			</div>
+          <dt class="col-sm-4">Premiação</dt>
+          <dd class="col-sm-8" style="white-space:pre-line">{{ bolao_selecionado.premiacao }}</dd>
 
-			<div class="form-group row">
-				<label for="inputPremiacao" class="col-sm-2 col-form-label font-weight-bold">Premiação</label>
-				<textarea class="form-control" readonly class="form-control col-sm-4" style="overflow:hidden; width: 52rem;" id="inputPremiacao" rows="3">{{bolao_selecionado.premiacao}}</textarea>
-			</div>
+          {% if bolao_selecionado.descricao %}
+          <dt class="col-sm-4">Descrição</dt>
+          <dd class="col-sm-8" style="white-space:pre-line">{{ bolao_selecionado.descricao }}</dd>
+          {% endif %}
 
-			<div class="form-group row">
-				<label for="inputDescricao" class="col-sm-2 col-form-label font-weight-bold">Descrição</label>
-				<textarea class="form-control" readonly class="form-control col-sm-4" style="overflow:hidden; width: 52rem;" id="inputDescricao" rows="3">{{bolao_selecionado.descricao}}</textarea>
-			</div>
-		</form>
-	  </div>
+        </dl>
+      </div>
+    </div>
+  </div>
 </div>
-
 {% endblock %}
-
-{% set title = 'Descrição Bolão' %}
