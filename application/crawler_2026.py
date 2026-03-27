@@ -82,8 +82,8 @@ def _seed_selecoes(db):
     logger.info('%d seleções recebidas', len(teams))
 
     for team in teams:
-        sigla = (team.get('tla') or team['shortName'][:3]).upper()
-        nome = team.get('name', sigla)
+        sigla = (team.get('tla') or (team.get('shortName') or team.get('name', '???'))[:3]).upper()
+        nome = team.get('name') or sigla
         escudo = team.get('crest', '')
 
         # O grupo vem nos standings, não no endpoint de times — deixamos em branco
@@ -115,8 +115,8 @@ def _upsert_jogo(db, match):
     home = match['homeTeam']
     away = match['awayTeam']
 
-    sigla_mandante = (home.get('tla') or home.get('shortName', '???')[:3]).upper()
-    sigla_visitante = (away.get('tla') or away.get('shortName', '???')[:3]).upper()
+    sigla_mandante = (home.get('tla') or (home.get('shortName') or home.get('name', '???'))[:3]).upper()
+    sigla_visitante = (away.get('tla') or (away.get('shortName') or away.get('name', '???'))[:3]).upper()
     nome_jogo = f'{sigla_mandante} x {sigla_visitante}'
 
     grupo_api = match.get('group') or ''
@@ -233,8 +233,8 @@ def atualiza_resultados(db):
     for match in matches:
         home = match['homeTeam']
         away = match['awayTeam']
-        sigla_m = (home.get('tla') or home.get('shortName', '')[:3]).upper()
-        sigla_v = (away.get('tla') or away.get('shortName', '')[:3]).upper()
+        sigla_m = (home.get('tla') or (home.get('shortName') or home.get('name', ''))[:3]).upper()
+        sigla_v = (away.get('tla') or (away.get('shortName') or away.get('name', ''))[:3]).upper()
         nome_jogo = f'{sigla_m} x {sigla_v}'
 
         ft = match.get('score', {}).get('fullTime', {})
