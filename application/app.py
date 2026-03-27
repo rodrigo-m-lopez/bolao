@@ -48,7 +48,14 @@ tbl_palpite = db.palpite
 tbl_pontuacao = db.pontuacao
 tbl_historico = db.historico
 
-_required_vars = ('GOOGLE_OAUTH_CREDENTIAL_ID', 'GOOGLE_OAUTH_CREDENTIAL_SECRET', 'FLASK_SECRET_KEY')
+DEV_MOCK_AUTH = os.environ.get('DEV_MOCK_AUTH', '').lower() in ('1', 'true', 'yes')
+
+if DEV_MOCK_AUTH:
+    _required_vars = ('FLASK_SECRET_KEY',)
+    logger.warning('DEV_MOCK_AUTH ativado — autenticação Google desabilitada. NÃO use em produção!')
+else:
+    _required_vars = ('GOOGLE_OAUTH_CREDENTIAL_ID', 'GOOGLE_OAUTH_CREDENTIAL_SECRET', 'FLASK_SECRET_KEY')
+
 _missing = [v for v in _required_vars if v not in os.environ]
 if _missing:
     raise Exception(
@@ -63,10 +70,11 @@ csrf = CSRFProtect(app)
 
 app.config['OAUTH_CREDENTIALS'] = {
     'google': {
-        'id': os.environ['GOOGLE_OAUTH_CREDENTIAL_ID'],
-        'secret': os.environ['GOOGLE_OAUTH_CREDENTIAL_SECRET']
+        'id': os.environ.get('GOOGLE_OAUTH_CREDENTIAL_ID', 'mock'),
+        'secret': os.environ.get('GOOGLE_OAUTH_CREDENTIAL_SECRET', 'mock')
     }
 }
+app.config['DEV_MOCK_AUTH'] = DEV_MOCK_AUTH
 
 login_manager = LoginManager()
 login_manager.login_view = 'login'
@@ -267,6 +275,29 @@ def login():
 def logout():
     logout_user()
     return redirect(safe_next('intro'))
+
+
+@app.route('/dev_login')
+def dev_login():
+    """Login automático para desenvolvimento local. Só funciona com DEV_MOCK_AUTH=true."""
+    from flask import abort
+    if not app.config.get('DEV_MOCK_AUTH'):
+        abort(404)
+    email = 'dev@local.test'
+    nome = 'Dev User'
+    usuario = tbl_usuario.find_one({'email': email})
+    if usuario is None:
+        tbl_usuario.insert_one({
+            'nome': nome, 'email': email,
+            'primeiro_nome': 'Dev', 'sobrenome': 'User',
+            'foto': '', 'sexo': 'm'
+        })
+    login_user(Usuario(email), remember=True)
+    logger.info('Dev mock login: %s', email)
+    next_uri = session.get('next') or url_for('lista_bolao')
+    if not is_safe_url(next_uri):
+        next_uri = url_for('lista_bolao')
+    return redirect(next_uri)
 
 
 @app.route('/callback/<provider>')
