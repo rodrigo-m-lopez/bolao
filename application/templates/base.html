@@ -1,99 +1,377 @@
 {% from "_formhelpers.html" import render_flash %}
 <!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-	<title>{{title}} :: Bolão da Copa 2026</title>
-	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
-	<link href="https://gitcdn.github.io/bootstrap-toggle/2.2.2/css/bootstrap-toggle.min.css" rel="stylesheet">
+<html lang="pt-BR" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>{{ title }} — Bolão da Copa 2026</title>
 
-	<style>
-		body {
-		   background-image: url("{{url_for('static', filename='back_image.png')}}");
-		}
-		input::-webkit-outer-spin-button,
-		input::-webkit-inner-spin-button {
-			-webkit-appearance: none;
-			margin: 0;
-		}
-	</style>
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+  <!-- Font Awesome 4 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 
-	{% block css %}{% endblock %}
-	{% block js %}{% endblock %}	
+  <style>
+    :root {
+      --copa-green:      #009c3b;
+      --copa-green-dark: #006428;
+      --copa-blue:       #002776;
+      --copa-gold:       #FFDF00;
+      --page-bg:         #f0f2f5;
+    }
 
-  </head>
-  <body>  
-  <nav class="navbar navbar-expand-lg navbar-light bg-light">
-	{% block menu %}
-	{% endblock %}
-	 <ul class="navbar-nav flex-row ml-md-auto d-none d-md-flex">
-    {% if current_user.is_authenticated %}
-    <li><img class="img-rounded" height="42" width="42" src="{{ current_user.foto }}"><a href="{{ url_for('logout',next=request.path) }}">&nbsp;&nbsp;Log Out </a></li>
-    {% else %}
-    <li><a href="{{ url_for('login',next=request.path) }}">Log In</a></li>
-    {% endif %}
-  </ul>
+    body {
+      background: var(--page-bg);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── Navbar ── */
+    .site-nav {
+      background: linear-gradient(135deg, var(--copa-green-dark) 0%, var(--copa-green) 100%);
+      box-shadow: 0 2px 10px rgba(0,0,0,.2);
+    }
+    .site-nav .navbar-brand {
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: #fff !important;
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+    }
+    .site-nav .navbar-brand img { height: 30px; }
+    .site-nav .nav-link {
+      color: rgba(255,255,255,.85) !important;
+      padding: .5rem .9rem;
+      border-radius: .3rem;
+      transition: background .15s, color .15s;
+    }
+    .site-nav .nav-link:hover  { color: var(--copa-gold) !important; background: rgba(255,255,255,.1); }
+    .site-nav .nav-link.active { color: var(--copa-gold) !important; font-weight: 600; }
+    .site-nav .navbar-toggler  { border-color: rgba(255,255,255,.3); }
+    .site-nav .navbar-toggler-icon {
+      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255,255,255,.8%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+    }
+    .site-nav .user-chip {
+      color: rgba(255,255,255,.75);
+      font-size: .82rem;
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      padding: .35rem .5rem;
+    }
+    .site-nav .user-chip img { border: 2px solid rgba(255,255,255,.4); }
+    .site-nav .btn-logout {
+      color: rgba(255,255,255,.8) !important;
+      padding: .3rem .7rem;
+      border: 1px solid rgba(255,255,255,.3);
+      border-radius: 20px;
+      font-size: .82rem;
+      transition: all .15s;
+    }
+    .site-nav .btn-logout:hover { background: rgba(255,255,255,.15); color: #fff !important; }
+
+    /* ── Cards ── */
+    .card {
+      border: none;
+      border-radius: .75rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,.08);
+    }
+    .card-header {
+      background: linear-gradient(135deg, var(--copa-green-dark), var(--copa-green));
+      color: #fff;
+      border-radius: .75rem .75rem 0 0 !important;
+      font-weight: 600;
+      border: none;
+    }
+    .card-header h3, .card-header h5 { margin: 0; }
+
+    /* ── Tables ── */
+    .table thead th {
+      background: var(--copa-blue);
+      color: #fff;
+      white-space: nowrap;
+      border: none;
+      font-weight: 600;
+      font-size: .875rem;
+    }
+    .table-hover tbody tr:hover { background: rgba(0,156,59,.06); }
+    .table td, .table th { vertical-align: middle; }
+
+    /* ── Buttons ── */
+    .btn-primary {
+      background: var(--copa-green);
+      border-color: var(--copa-green);
+    }
+    .btn-primary:hover, .btn-primary:focus {
+      background: var(--copa-green-dark);
+      border-color: var(--copa-green-dark);
+    }
+    .btn-outline-primary {
+      color: var(--copa-green);
+      border-color: var(--copa-green);
+    }
+    .btn-outline-primary:hover {
+      background: var(--copa-green);
+      border-color: var(--copa-green);
+    }
+
+    /* ── Score inputs (aposta/palpites) ── */
+    .score-input {
+      width: 52px !important;
+      min-height: 42px;
+      text-align: center;
+      font-weight: 700;
+      font-size: 1rem;
+      padding: .25rem;
+      border-radius: .4rem;
+    }
+    /* Hide number spinners */
+    .score-input::-webkit-outer-spin-button,
+    .score-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .score-input[type=number] { -moz-appearance: textfield; }
+
+    /* ── Game rows ── */
+    .game-row {
+      padding: .5rem 0;
+      border-bottom: 1px solid #e9ecef;
+    }
+    .game-row:last-child { border-bottom: none; }
+    .team-name { font-weight: 500; font-size: .92rem; }
+    .team-flag { width: 28px; height: 28px; object-fit: contain; }
+    .vs-sep { font-weight: 700; color: #6c757d; padding: 0 .3rem; }
+
+    /* ── Ranking badges ── */
+    .rank-1 { background: #ffd700; color: #333; }
+    .rank-2 { background: #c0c0c0; color: #333; }
+    .rank-3 { background: #cd7f32; color: #fff; }
+    .rank-pos {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      font-weight: 700;
+      font-size: .85rem;
+      background: #e9ecef;
+    }
+
+    /* ── Flash modal ── */
+    #flashModal .modal-header { background: var(--copa-green); color: #fff; border-radius: .75rem .75rem 0 0; }
+    #flashModal .btn-close    { filter: invert(1); }
+
+    /* ── Misc ── */
+    .badge-bloqueado { background: #6c757d; color: #fff; font-size: .65rem; padding: .2em .55em; border-radius: .3rem; }
+    a { color: var(--copa-green); }
+    a:hover { color: var(--copa-green-dark); }
+
+    /* ── Dark mode overrides ── */
+    [data-bs-theme="dark"] {
+      --page-bg: #0d1117;
+      --copa-green-dark: #005c24;
+      --copa-green:      #00b844;
+    }
+    [data-bs-theme="dark"] body       { background: var(--page-bg); }
+    [data-bs-theme="dark"] .card      { box-shadow: 0 2px 10px rgba(0,0,0,.4); }
+    [data-bs-theme="dark"] .table-hover tbody tr:hover { background: rgba(0,184,68,.07); }
+    [data-bs-theme="dark"] a          { color: #4dcb7b; }
+    [data-bs-theme="dark"] a:hover    { color: #7eddaa; }
+    [data-bs-theme="dark"] .btn-primary { background: var(--copa-green); border-color: var(--copa-green); }
+
+    /* ── Theme toggle button ── */
+    #themeToggle {
+      position: fixed;
+      bottom: 1.25rem;
+      right: 1.25rem;
+      z-index: 1050;
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,.25);
+      background: var(--copa-green);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.05rem;
+      cursor: pointer;
+      box-shadow: 0 3px 10px rgba(0,0,0,.25);
+      transition: background .2s, transform .15s;
+    }
+    #themeToggle:hover { background: var(--copa-green-dark); transform: scale(1.08); }
+
+    /* ── Responsive tweaks ── */
+    @media (max-width: 576px) {
+      .hide-xs      { display: none !important; }
+      .table td, .table th { font-size: .8rem; padding: .35rem .3rem; }
+      .card-body    { padding: .75rem; }
+      .team-name    { font-size: .8rem; }
+    }
+  </style>
+
+  <script>
+    /* Apply theme ASAP to avoid flash */
+    (function () {
+      var stored = localStorage.getItem('copa-theme');
+      var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var theme = stored || (prefersDark ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-bs-theme', theme);
+    })();
+  </script>
+
+  {% block css %}{% endblock %}
+</head>
+<body>
+
+<!-- ── Navigation ──────────────────────────────────────────────── -->
+<nav class="navbar navbar-expand-lg site-nav py-2">
+  <div class="container-xl">
+
+    {% block navbar_brand %}
+    <a class="navbar-brand" href="/lista_bolao">
+      <img src="{{ url_for('static', filename='logo_alta_transparent.png') }}" alt="Copa 2026">
+      Copa 2026
+    </a>
+    {% endblock %}
+
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#siteNav" aria-controls="siteNav" aria-expanded="false">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="siteNav">
+      <ul class="navbar-nav me-auto">
+        {% block navbar_nav %}{% endblock %}
+      </ul>
+      <ul class="navbar-nav align-items-center gap-1">
+        {% if current_user.is_authenticated %}
+        <li class="nav-item">
+          <span class="user-chip">
+            {% if current_user.foto %}
+            <img src="{{ current_user.foto }}" width="28" height="28" class="rounded-circle" alt="{{ current_user.primeiro_nome }}">
+            {% endif %}
+            {{ current_user.primeiro_nome }}
+          </span>
+        </li>
+        <li class="nav-item">
+          <a href="{{ url_for('logout', next=request.path) }}" class="nav-link btn-logout">
+            <i class="fa fa-sign-out"></i> Sair
+          </a>
+        </li>
+        {% else %}
+        <li class="nav-item">
+          <a href="{{ url_for('login', next=request.path) }}" class="nav-link btn-logout">
+            <i class="fa fa-sign-in"></i> Entrar
+          </a>
+        </li>
+        {% endif %}
+      </ul>
+    </div>
+
+  </div>
 </nav>
-	<BR>
-	
-	<div class="container">		
-		<div id="myModal" class="modal fade" role="dialog">
-			<div class="modal-dialog">
 
-				<!-- Modal content-->
-				<div class="modal-content">
-					<div class="modal-header">
-						<button type="button" class="close" data-dismiss="modal">&times;</button>
-					</div>
-					<div class="modal-body">
-						{% with messages = get_flashed_messages() %}
-						{% if messages %}
-						<ul class=flashes>
-							{% for message in messages %}
-							<li>{{ message }}</li>
-							{% endfor %}
-						</ul>
-						{% endif %}
-						{% endwith %}
-					</div>
-					<div class="modal-footer">
-						<button type="button" class="btn btn-default" data-dismiss="modal">OK</button>
-					</div>
-				</div>
+<!-- ── Flash modal ─────────────────────────────────────────────── -->
+<div class="modal fade" id="flashModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow rounded-3">
+      <div class="modal-header">
+        <h6 class="modal-title mb-0"><i class="fa fa-info-circle me-2"></i>Aviso</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="flashModalBody"></div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-primary btn-sm" data-bs-dismiss="modal">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
 
-			</div>
-		</div>
+<!-- ── Page content ─────────────────────────────────────────────── -->
+<div class="container-xl px-3 py-4">
+  {% block content %}{% endblock %}
+</div>
 
-		{% block content %}
-		{% endblock %}
-	</div>
-	
-	{% block script %}{% endblock %}
-	
-	<script>
-	function r(f){/in/.test(document.readyState)?setTimeout(r,9,f):f()}
-	r(function(){
-		var messages = {{ get_flashed_messages() | tojson }};
+<!-- ── Theme toggle ─────────────────────────────────────────────── -->
+<button id="themeToggle" title="Alternar tema claro/escuro" aria-label="Alternar tema">
+  <i class="fa fa-moon-o" id="themeIcon"></i>
+</button>
 
-		if (messages && messages.length > 0) {
-			$("#myModal").modal();
-		};
-	});
-	function montaAlerta(texto){
-		if (texto == ""){
-			return "";
-		}
-		return "<div class=\"alert alert-danger alert-dismissible fade show\" style=\"width: 52rem;\">".concat(texto ,"</div>");	              
-	}
-	</script>
-    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
-	<script src="http://1000hz.github.io/bootstrap-validator/dist/validator.min.js"></script>
-	<script src="https://gitcdn.github.io/bootstrap-toggle/2.2.2/js/bootstrap-toggle.min.js"></script>	
-	{% block script_after %}{% endblock %}
-  </body>
+<!-- ── Scripts ──────────────────────────────────────────────────── -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc4s9bIOgUxi8T/jzmZ4SY1OZBXI5C94OqjQXKPovYc" crossorigin="anonymous"></script>
+
+<script>
+/* ── Theme toggle ── */
+(function () {
+  function getTheme() {
+    return document.documentElement.getAttribute('data-bs-theme') || 'light';
+  }
+  function applyTheme(theme) {
+    document.documentElement.setAttribute('data-bs-theme', theme);
+    localStorage.setItem('copa-theme', theme);
+    var icon = document.getElementById('themeIcon');
+    if (icon) {
+      icon.className = theme === 'dark' ? 'fa fa-sun-o' : 'fa fa-moon-o';
+    }
+  }
+  document.addEventListener('DOMContentLoaded', function () {
+    applyTheme(getTheme()); /* sync icon with current theme */
+    var btn = document.getElementById('themeToggle');
+    if (btn) {
+      btn.addEventListener('click', function () {
+        applyTheme(getTheme() === 'dark' ? 'light' : 'dark');
+      });
+    }
+
+    /* ── Accordion fallback (in case Bootstrap JS is not available) ── */
+    document.querySelectorAll('[data-bs-toggle="collapse"]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (typeof bootstrap !== 'undefined') return; /* Bootstrap handles it */
+        var targetId = btn.getAttribute('data-bs-target');
+        var target = document.querySelector(targetId);
+        if (!target) return;
+        var isOpen = target.classList.contains('show');
+        /* Close siblings if data-bs-parent is set */
+        var parent = btn.closest('[id]');
+        if (!isOpen && parent) {
+          var parentId = '#' + parent.id;
+          document.querySelectorAll('[data-bs-parent="' + parentId + '"]').forEach(function (el) {
+            el.classList.remove('show');
+          });
+          document.querySelectorAll('[data-bs-parent="' + parentId + '"] + * .accordion-button, .accordion-button[data-bs-target]').forEach(function (b) {
+            if (b !== btn) b.classList.add('collapsed');
+          });
+        }
+        target.classList.toggle('show', !isOpen);
+        btn.classList.toggle('collapsed', isOpen);
+        btn.setAttribute('aria-expanded', String(!isOpen));
+      });
+    });
+  });
+})();
+
+/* Shared helpers */
+function montaAlerta(texto) {
+  if (!texto) return '';
+  return '<div class="alert alert-danger alert-dismissible fade show" role="alert">' + texto +
+         '<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>';
+}
+
+/* Flash messages */
+document.addEventListener('DOMContentLoaded', function () {
+  var msgs = {{ get_flashed_messages() | tojson }};
+  if (msgs && msgs.length) {
+    document.getElementById('flashModalBody').innerHTML =
+      '<ul class="list-unstyled mb-0">' +
+      msgs.map(function (m) { return '<li>' + m + '</li>'; }).join('') +
+      '</ul>';
+    new bootstrap.Modal(document.getElementById('flashModal')).show();
+  }
+});
+</script>
+
+{% block script %}{% endblock %}
+{% block script_after %}{% endblock %}
+
+</body>
 </html>

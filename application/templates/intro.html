@@ -1,109 +1,151 @@
 {% extends 'menu_gerencia_bolao.html' %}
+{% set title = 'Intro' %}
+
 {% block content %}
-
-
-<div class="card card-outline-secondary">
-	<div class="card-header">
-		<h3 class="mb-0">Bolão da Copa do Mundo 2026 &mdash; EUA / Canadá / México</h3>
-	</div>
-	<div class="card-body">
-
-        <img style="margin: auto; display: block;" width="250px" src="{{url_for('static', filename='logo_alta_transparent.png')}}" />
-        <h2 id="regulamento">Regulamento</h2>
-        <ol>
-            <p>1 - Cada participante deverá definir seus palpites, apostar nos 72 jogos da primeira fase da Copa do Mundo 2026</p>
-            <p>2 - Pontuação
-                <ul class="list-group">
-                    <li class="list-group-item">Acertar placar exato do jogo: 18 pontos<br></li>
-                    <li class="list-group-item">Acertar o time vencedor ou empate: 9 pontos<br></li>
-                    <li class="list-group-item">Acertar o número de gols de uma das equipes: 3 pontos <br></li>
-                </ul>
-            </p>
-
-            <p>3 - Critérios de desempate
-                <ul class="list-group">
-                    <li class="list-group-item">Maior quantidade de acertos de placares exatos dos jogos <br></li>
-                    <li class="list-group-item">Maior quantidade de acertos do time vencedor ou empate dos jogos <br></li>
-                    <li class="list-group-item">Maior quantidade de acertos no número de gols de alguma das equipes <br></li>
-                </ul>
-            </p>
-        </ol>
-
-
-        <p><strong>Exemplos</strong>:</p>
-        <p><strong>Placar Apostado : Brasil 3 x 1 Argentina</strong>:</p>
-        <table class="table">
-            <thead>
-                <tr>
-                    <th scope="col">Placar Real</th>
-                    <th scope="col">Pontuação</th>
-                    <th scope="col">Obs</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>Brasil 3 x 1 Argentina</td>
-                    <td>18 pontos</td>
-                    <td>Placar exato</td>
-                </tr>
-                <tr>
-                    <td>Brasil 3 x 0 Argentina</td>
-                    <td>12 pontos</td>
-                    <td>9 pelo time vencedor + 3 pelo acerto dos gols de um dos times</td>
-                </tr>
-                <tr>
-                    <td>Brasil 2 x 0 Argentina</td>
-                    <td>9 pontos</td>
-                    <td>Acertou o time vencedor</td>
-                </tr>
-                <tr>
-                    <td>Brasil 0 x 1 Argentina</td>
-                    <td>3 pontos</td>
-                    <td>Acertou o número de gols de um dos times</td>
-                </tr>
-                <tr>
-                    <td>Brasil 3 x 4 Argentina</td>
-                    <td>3 pontos</td>
-                    <td>Acertou o número de gols de um dos times</td>
-                </tr>
-                <tr>
-                    <td>Brasil 0 x 0 Argentina</td>
-                    <td>0 pontos</td>
-                    <td>Errou tudo</td>
-                </tr>
-            </tbody>
-        </table>
-        <h2>FAQ</h2>
-        <h5>Qualquer um pode criar um bolão?</h5>
-        <p>Sim</p>
-        <h5>Quanto custa criar um bolão?</h5>
-        <p>Nada, é gratuito.</p>
-        <h5>Como eu faço para apostar?</h5>
-        <p>Você só precisa logar com a sua conta do Google. Selecione o bolão e faça a aposta pelo próprio site. Os resultados dos jogos são atualizados automaticamente.</p>
-        <h5>Qual o valor da aposta?</h5>
-        <p>Quem cria o bolão decide. Cada bolão pode ter um preço diferente. Recomendamos algo em torno de R$10.</p>
-        <h5>Como eu faço o pagamento da aposta?</h5>
-        <p>Quem cria o bolão decide. Pode ser por dinheiro, transferência, cartão, etc. Nós não intermediamos nenhum valor.</p>
-        <h5>O bolão é só da primeira fase?</h5>
-        <p>Sim. Após os 72 jogos da fase de grupos o bolão termina. A fase de mata-mata não está prevista.</p>
-        <h5>Posso criar um bolão para a minha empresa? Posso criar um bolão para a minha família?</h5>
-        <p>Sim e sim.</p>
-        <h5>Posso apostar em mais de um bolão? Posso apostar duas vezes no mesmo bolão? O administrador do bolão pode apostar também?</h5>
-        <p>Sim, sim e sim.</p>
-        <h5>Qual a premiação do bolão?</h5>
-        <p>Quem cria o bolão decide. Recomendamos 60% para o primeiro colocado, 30% para o segundo e 10% para o terceiro.</p>
-        <h5>Como eu faço o cadastro?</h5>
-        <p>Não existe cadastro. Ao fazer a aposta e efetuar o pagamento ao criador do bolão, ele marca seu nome como "pago".<br>
-            Uma vez com o pagamento registrado, você está participando do bolão.
-        </p>
-        <h5>É gratuito mesmo? Tem pegadinha?</h5>
-        <p>Sim, não.</p>
-        <h5>Qual o email de contato?</h5>
-        <p>Rodrigo e Guilherme<br>
-            <a href="mailto:bolaodagalera2026@gmail.com">bolaodagalera2026@gmail.com</a>
-        </p>
-    </div>
+<!-- Hero -->
+<div class="text-center mb-4">
+  <img src="{{ url_for('static', filename='logo_alta_transparent.png') }}" alt="Copa 2026" style="height:110px" class="mb-3">
+  <h2 class="fw-bold mb-1">Bolão da Copa do Mundo 2026</h2>
+  <p class="text-muted">EUA &bull; Canadá &bull; México</p>
 </div>
 
+<div class="row g-3">
+
+  <!-- Pontuação -->
+  <div class="col-12 col-md-6">
+    <div class="card h-100">
+      <div class="card-header"><i class="fa fa-star me-2"></i>Pontuação</div>
+      <div class="card-body p-0">
+        <ul class="list-group list-group-flush">
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            Placar exato
+            <span class="badge rounded-pill text-bg-warning text-dark fw-bold">18 pts</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            Vencedor ou empate
+            <span class="badge rounded-pill text-bg-success fw-bold">9 pts</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            Gols de um dos times
+            <span class="badge rounded-pill text-bg-primary fw-bold">3 pts</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Desempate -->
+  <div class="col-12 col-md-6">
+    <div class="card h-100">
+      <div class="card-header"><i class="fa fa-balance-scale me-2"></i>Critérios de Desempate</div>
+      <div class="card-body p-0">
+        <ol class="list-group list-group-flush list-group-numbered">
+          <li class="list-group-item">Maior quantidade de placares exatos</li>
+          <li class="list-group-item">Maior quantidade de vencedores / empates corretos</li>
+          <li class="list-group-item">Maior quantidade de gols acertados de um time</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <!-- Exemplo -->
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header"><i class="fa fa-table me-2"></i>Exemplos — Palpite: Brasil 3 × 1 Argentina</div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-striped table-sm mb-0">
+            <thead>
+              <tr>
+                <th>Placar Real</th>
+                <th class="text-center">Pontuação</th>
+                <th class="hide-xs">Motivo</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Brasil 3 × 1 Argentina</td>
+                <td class="text-center"><span class="badge text-bg-warning text-dark fw-bold">18 pts</span></td>
+                <td class="hide-xs">Placar exato</td>
+              </tr>
+              <tr>
+                <td>Brasil 3 × 0 Argentina</td>
+                <td class="text-center"><span class="badge text-bg-success fw-bold">12 pts</span></td>
+                <td class="hide-xs">9 vencedor + 3 gols de um time</td>
+              </tr>
+              <tr>
+                <td>Brasil 2 × 0 Argentina</td>
+                <td class="text-center"><span class="badge text-bg-success fw-bold">9 pts</span></td>
+                <td class="hide-xs">Acertou o vencedor</td>
+              </tr>
+              <tr>
+                <td>Brasil 0 × 1 Argentina</td>
+                <td class="text-center"><span class="badge text-bg-primary fw-bold">3 pts</span></td>
+                <td class="hide-xs">Acertou gols de um time</td>
+              </tr>
+              <tr>
+                <td>Brasil 3 × 4 Argentina</td>
+                <td class="text-center"><span class="badge text-bg-primary fw-bold">3 pts</span></td>
+                <td class="hide-xs">Acertou gols de um time</td>
+              </tr>
+              <tr>
+                <td>Brasil 0 × 0 Argentina</td>
+                <td class="text-center"><span class="badge text-bg-secondary fw-bold">0 pts</span></td>
+                <td class="hide-xs">Errou tudo</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FAQ -->
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header"><i class="fa fa-question-circle me-2"></i>Perguntas Frequentes</div>
+      <div class="card-body p-0">
+        <div class="accordion accordion-flush" id="faqAccordion">
+
+          {% set faqs = [
+            ('Qualquer um pode criar um bolão?', 'Sim.'),
+            ('Quanto custa criar um bolão?', 'Nada, é gratuito.'),
+            ('Como eu faço para apostar?', 'Você só precisa logar com a sua conta Google. Selecione o bolão e faça a aposta pelo próprio site. Os resultados são atualizados automaticamente.'),
+            ('Qual o valor da aposta?', 'Quem cria o bolão decide. Cada bolão pode ter um preço diferente. Recomendamos algo em torno de R$10.'),
+            ('Como faço o pagamento?', 'Quem cria o bolão decide. Pode ser por dinheiro, transferência, cartão, etc. Nós não intermediamos nenhum valor.'),
+            ('O bolão é só da primeira fase?', 'Sim. Após os 72 jogos da fase de grupos o bolão termina. A fase de mata-mata não está prevista.'),
+            ('Posso criar um bolão para empresa ou família?', 'Sim e sim.'),
+            ('Posso apostar em mais de um bolão?', 'Sim. Inclusive o administrador do bolão pode apostar também.'),
+            ('Qual a premiação do bolão?', 'Quem cria o bolão decide. Recomendamos 60% para o 1º, 30% para o 2º e 10% para o 3º.'),
+            ('Como eu faço o cadastro?', 'Não existe cadastro formal. Ao fazer a aposta e efetuar o pagamento ao criador do bolão, ele marca seu nome como "pago".'),
+            ('É gratuito mesmo?', 'Sim, sem pegadinha.'),
+          ] %}
+
+          {% for q, a in faqs %}
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="faqHead{{ loop.index }}">
+              <button class="accordion-button collapsed py-3 small fw-semibold" type="button"
+                      data-bs-toggle="collapse" data-bs-target="#faqBody{{ loop.index }}"
+                      aria-expanded="false" aria-controls="faqBody{{ loop.index }}">
+                {{ q }}
+              </button>
+            </h2>
+            <div id="faqBody{{ loop.index }}" class="accordion-collapse collapse"
+                 data-bs-parent="#faqAccordion" aria-labelledby="faqHead{{ loop.index }}">
+              <div class="accordion-body py-2 small">{{ a }}</div>
+            </div>
+          </div>
+          {% endfor %}
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Contato -->
+  <div class="col-12 text-center text-muted small pb-2">
+    Dúvidas? Fale conosco: <a href="mailto:bolaodagalera2026@gmail.com">bolaodagalera2026@gmail.com</a>
+  </div>
+
+</div>
 {% endblock %}
-{% set title = 'Intro' %}
