@@ -63,9 +63,23 @@ if _missing:
         'Variáveis de ambiente obrigatórias ausentes: {}'.format(', '.join(_missing))
     )
 
+def _init_dev_db(db):
+    """Seed the in-memory DB at startup (DEV_MOCK_AUTH mode).
+
+    - SEED_FROM_API=true + FOOTBALL_DATA_API_KEY set → calls the real API
+      seed in-process so data persists in the same mongomock instance.
+    - Otherwise → uses the local mock seed with synthetic test scenarios.
+    """
+    if os.environ.get('SEED_FROM_API') == 'true' and os.environ.get('FOOTBALL_DATA_API_KEY'):
+        from application.crawler_2026 import seed_database
+        seed_database(db)
+    else:
+        from application.dev_seed import populate_dev_db
+        populate_dev_db(db)
+
+
 if DEV_MOCK_AUTH:
-    from application.dev_seed import populate_dev_db
-    populate_dev_db(db)
+    _init_dev_db(db)
 
 app = Flask(__name__)
 app.secret_key = os.environ['FLASK_SECRET_KEY']
