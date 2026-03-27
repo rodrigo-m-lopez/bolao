@@ -112,6 +112,19 @@ class TestUpsertJogoNullFields:
         except TypeError as exc:
             pytest.fail(f"_upsert_jogo crashed when all name fields are null: {exc}")
 
+    def test_confirmed_vs_tbd_team_is_skipped_gracefully(self):
+        """Real-world pattern: confirmed team (e.g. KOR) vs TBD slot (all null) → skip, no crash."""
+        db = _make_db()
+        # KOR is confirmed; the away slot is TBD (all name fields null in the API)
+        match = _make_match(
+            home_tla='KOR', home_short='Korea Republic',
+            away_tla=None,  away_short=None, away_name=None,
+        )
+        _insert_selecoes(db, 'KOR')
+        crawler._upsert_jogo(db, match)
+        # Jogo must NOT be inserted since the away selecao doesn't exist
+        assert db.jogo.count_documents({}) == 0
+
 
 class TestSeedSelecoes:
     """_seed_selecoes must handle API teams with null tla gracefully."""
