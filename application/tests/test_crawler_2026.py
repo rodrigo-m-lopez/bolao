@@ -12,11 +12,21 @@ def _make_db():
     return client['test']
 
 
-def _make_match(home_tla, home_short, away_tla, away_short, gols_m=None, gols_v=None):
-    """Build a minimal match dict as returned by football-data.org API."""
+_UNSET = object()  # sentinel to distinguish "omitted" from explicit None
+
+
+def _make_match(home_tla, home_short, away_tla, away_short, gols_m=None, gols_v=None,
+                home_name=_UNSET, away_name=_UNSET):
+    """Build a minimal match dict as returned by football-data.org API.
+
+    home_name/away_name default to home_short/away_short when omitted.
+    Pass explicit None to simulate API responses where the key exists but is null.
+    """
     return {
-        'homeTeam': {'tla': home_tla, 'shortName': home_short, 'name': home_short or 'Team A'},
-        'awayTeam': {'tla': away_tla, 'shortName': away_short, 'name': away_short or 'Team B'},
+        'homeTeam': {'tla': home_tla, 'shortName': home_short,
+                     'name': home_name if home_name is not _UNSET else (home_short or 'Team A')},
+        'awayTeam': {'tla': away_tla, 'shortName': away_short,
+                     'name': away_name if away_name is not _UNSET else (away_short or 'Team B')},
         'utcDate': '2026-06-11T18:00:00Z',
         'group': 'GROUP_A',
         'matchday': 1,
@@ -89,6 +99,19 @@ class TestUpsertJogoNullFields:
         crawler._upsert_jogo(db, match)
         assert db.jogo.count_documents({}) == 0
 
+    def test_all_three_fields_null_does_not_crash(self):
+        """tla=None, shortName=None, name=None (all keys present with null value) → no crash."""
+        db = _make_db()
+        # Simulate the real API response where every name field is null
+        match = _make_match(
+            home_tla=None, home_short=None, home_name=None,
+            away_tla=None, away_short=None, away_name=None,
+        )
+        try:
+            crawler._upsert_jogo(db, match)
+        except TypeError as exc:
+            pytest.fail(f"_upsert_jogo crashed when all name fields are null: {exc}")
+
 
 class TestSeedSelecoes:
     """_seed_selecoes must handle API teams with null tla gracefully."""
@@ -124,3 +147,18 @@ class TestSeedSelecoes:
 
         siglas = {d['sigla'] for d in db.selecao.find()}
         assert 'FRA' in siglas
+
+    def test_all_fields_null_does_not_crash(self):
+        """Team with tla=None, shortName=None, name=None → no crash, falls back to '???'."""
+        db = _make_db()
+        teams_payload = {
+            'teams': [
+                {'tla': None, 'shortName': None, 'name': None, 'crest': ''},
+            ]
+        }
+        with pytest.MonkeyPatch().context() as mp:
+            mp.setattr(crawler, '_get', lambda *a, **kw: teams_payload)
+            try:
+                crawler._seed_selecoes(db)
+            except TypeError as exc:
+                pytest.fail(f"_seed_selecoes crashed when all name fields are null: {exc}")

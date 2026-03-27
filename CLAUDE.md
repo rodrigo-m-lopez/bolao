@@ -78,3 +78,17 @@ All authenticated routes use `@login_required` (Flask-Login). OAuth callback at 
 pip freeze > requirements.txt
 git add requirements.txt
 ```
+
+## Development Process
+
+### Test-Driven Development (TDD)
+**Always follow the `tdd` skill for any production code change** — new features, bug fixes, and refactors alike.
+The workflow is: write a failing test → confirm it fails for the right reason → write the minimum code to pass → confirm all tests pass.
+
+```bash
+# Run a single test file (fast feedback)
+python -m pytest application/tests/test_foo.py -v
+
+# Run full suite (regression check)
+python -m pytest
+```
