@@ -17,6 +17,7 @@ from urllib.parse import urlparse, urljoin
 from markupsafe import escape
 
 from application.db_config import get_db_client
+from application.db_indexes import create_indexes
 from application.constants import (
     CAMPOS_PONTUACAO_BANCO,
     CAMPOS_PONTUACAO_DTO,
@@ -35,7 +36,9 @@ logger = logging.getLogger(__name__)
 
 client = get_db_client()
 
-db = client.dev
+db = client[os.environ.get('MONGO_DB_NAME', 'dev')]
+create_indexes(db)
+
 tbl_jogo = db.jogo
 tbl_selecao = db.selecao
 tbl_usuario = db.usuario
