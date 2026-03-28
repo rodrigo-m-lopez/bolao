@@ -899,6 +899,7 @@ def monta_dto_grupos():
 class Usuario:
     def __init__(self, email):
         self.usuario_banco = tbl_usuario.find_one({'email': email})
+        self.mongo_id = None
         if self.usuario_banco is not None:
             self.email = str(self.usuario_banco['email'])
             self.nome = str(self.usuario_banco['nome'])
