@@ -85,21 +85,61 @@ _JOGOS_BR = [
     ('CAM x FLU', 2, timedelta(days=6),   None, None, 'CAM', 'FLU'),
 ]
 
-# Clubes mock da Copa do Brasil (siglas únicas, sem conflito)
-_CLUBES_CBR = [
-    {'nome': 'Grêmio',        'sigla': 'GRE', 'escudo': '', 'grupo': ''},
-    {'nome': 'Internacional',  'sigla': 'INT', 'escudo': '', 'grupo': ''},
-    {'nome': 'Santos',         'sigla': 'SAN', 'escudo': '', 'grupo': ''},
-    {'nome': 'Cruzeiro',       'sigla': 'CRU', 'escudo': '', 'grupo': ''},
+# Clubes mock da Copa Sulamericana (siglas únicas, sem conflito)
+_CLUBES_SUL = [
+    {'nome': 'Athletico-PR',  'sigla': 'CAP', 'escudo': '', 'grupo': ''},
+    {'nome': 'Fortaleza',     'sigla': 'FOR', 'escudo': '', 'grupo': ''},
+    {'nome': 'Independiente', 'sigla': 'IND', 'escudo': '', 'grupo': ''},
+    {'nome': 'Defensa',       'sigla': 'DEF', 'escudo': '', 'grupo': ''},
 ]
 
 # (nome, rodada, delta, gm, gv, mandante_sigla, visitante_sigla)
-_JOGOS_CBR = [
-    ('GRE x INT', 1, timedelta(days=-1),  1,    0,    'GRE', 'INT'),
-    ('SAN x CRU', 1, timedelta(hours=4),  None, None, 'SAN', 'CRU'),
-    ('INT x GRE', 2, timedelta(days=7),   None, None, 'INT', 'GRE'),
-    ('CRU x SAN', 2, timedelta(days=8),   None, None, 'CRU', 'SAN'),
+_JOGOS_SUL = [
+    ('CAP x FOR', 1, timedelta(days=-1),  2,    0,    'CAP', 'FOR'),
+    ('IND x DEF', 1, timedelta(hours=4),  None, None, 'IND', 'DEF'),
+    ('FOR x CAP', 2, timedelta(days=7),   None, None, 'FOR', 'CAP'),
+    ('DEF x IND', 2, timedelta(days=8),   None, None, 'DEF', 'IND'),
 ]
+
+
+def seed_sulamericana_mock(db):
+    """Insere dados mock da Copa Sulamericana 2026 de forma idempotente.
+
+    Usa upsert ($setOnInsert) — seguro chamar em modo API e em modo mock.
+    """
+    now = datetime.utcnow()
+
+    for clube in _CLUBES_SUL:
+        db.selecao.update_one(
+            {'sigla': clube['sigla']},
+            {'$setOnInsert': clube},
+            upsert=True,
+        )
+
+    sel_sul = {
+        s['sigla']: s['_id']
+        for s in db.selecao.find({'sigla': {'$in': ['CAP', 'FOR', 'IND', 'DEF']}})
+    }
+
+    for nome, rodada, delta, gm, gv, m_sigla, v_sigla in _JOGOS_SUL:
+        db.jogo.update_one(
+            {'nome': nome, 'competicao': 'Copa Sulamericana 2026'},
+            {'$setOnInsert': {
+                'nome': nome,
+                'grupo': f'Rodada {rodada}',
+                'rodada': rodada,
+                'data': now + delta,
+                'local': 'Estádio Dev',
+                'mandante': sel_sul[m_sigla],
+                'visitante': sel_sul[v_sigla],
+                'gols_mandante': gm,
+                'gols_visitante': gv,
+                'competicao': 'Copa Sulamericana 2026',
+            }},
+            upsert=True,
+        )
+
+    logger.info('Copa Sulamericana 2026: seed mock concluído (%d jogos)', len(_JOGOS_SUL))
 
 
 def populate_dev_db(db):
@@ -168,21 +208,21 @@ def populate_dev_db(db):
             'competicao': 'Campeonato Brasileiro Série A 2026',
         })
 
-    # ── Jogos da Copa do Brasil ───────────────────────────────────────────────
-    db.selecao.insert_many(_CLUBES_CBR)
-    sel_cbr = {s['sigla']: s['_id'] for s in db.selecao.find({'sigla': {'$in': ['GRE', 'INT', 'SAN', 'CRU']}})}
-    for nome, rodada, delta, gm, gv, m_sigla, v_sigla in _JOGOS_CBR:
+    # ── Jogos da Copa Sulamericana ────────────────────────────────────────────
+    db.selecao.insert_many(_CLUBES_SUL)
+    sel_sul = {s['sigla']: s['_id'] for s in db.selecao.find({'sigla': {'$in': ['CAP', 'FOR', 'IND', 'DEF']}})}
+    for nome, rodada, delta, gm, gv, m_sigla, v_sigla in _JOGOS_SUL:
         db.jogo.insert_one({
             'nome': nome,
             'grupo': f'Rodada {rodada}',
             'rodada': rodada,
             'data': now + delta,
             'local': 'Estádio Dev',
-            'mandante': sel_cbr[m_sigla],
-            'visitante': sel_cbr[v_sigla],
+            'mandante': sel_sul[m_sigla],
+            'visitante': sel_sul[v_sigla],
             'gols_mandante': gm,
             'gols_visitante': gv,
-            'competicao': 'Copa do Brasil 2026',
+            'competicao': 'Copa Sulamericana 2026',
         })
 
     # ── Usuário dev ───────────────────────────────────────────────────────────
@@ -300,6 +340,6 @@ def populate_dev_db(db):
     n_jogos = db.jogo.count_documents({})
     logger.info(
         'DEV_MOCK_AUTH: banco populado — '
-        '%d jogos (Copa do Mundo + Libertadores + Brasileirão + Copa do Brasil), '
+        '%d jogos (Copa do Mundo + Libertadores + Brasileirão + Sulamericana), '
         '1 bolão ("Bolão Dev"), 3 apostas.', n_jogos
     )

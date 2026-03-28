@@ -47,30 +47,51 @@
               </div>
 
               <!-- Placar -->
-              <div class="placar-area d-flex align-items-center gap-1">
+              <div class="placar-area d-flex flex-column align-items-center gap-0">
                 {% if jogo.bloqueado %}
-                  {% if jogo.tbd %}
-                    <span class="text-muted">—</span>
-                    <span class="vs-sep">x</span>
-                    <span class="text-muted">—</span>
-                    <span class="badge-bloqueado ms-1" style="background:#6f42c1">a definir</span>
-                  {% elif p %}
-                    <span class="fw-bold">{{ p.gols_mandante }}</span>
-                    <span class="vs-sep">x</span>
-                    <span class="fw-bold">{{ p.gols_visitante }}</span>
-                    <span class="badge-bloqueado ms-1">bloqueado</span>
+                  {% if jogo.status == 'tbd' %}
+                    <div class="d-flex align-items-center gap-1">
+                      <span class="text-muted">—</span>
+                      <span class="vs-sep">x</span>
+                      <span class="text-muted">—</span>
+                    </div>
+                  {% elif jogo.status == 'encerrado' %}
+                    <div class="d-flex align-items-center gap-1">
+                      <span class="fw-bold">{{ jogo.gols_mandante }}</span>
+                      <span class="vs-sep">x</span>
+                      <span class="fw-bold">{{ jogo.gols_visitante }}</span>
+                    </div>
+                    {% if p %}
+                    <div class="text-muted" style="font-size:.7rem;line-height:1.2">
+                      palpite: {{ p.gols_mandante }} x {{ p.gols_visitante }}
+                    </div>
+                    {% endif %}
+                  {% elif jogo.status == 'em_andamento' %}
+                    <div class="d-flex align-items-center gap-1">
+                      <span class="text-warning fw-bold">—</span>
+                      <span class="vs-sep">x</span>
+                      <span class="text-warning fw-bold">—</span>
+                    </div>
+                    {% if p %}
+                    <div class="text-muted" style="font-size:.7rem;line-height:1.2">
+                      palpite: {{ p.gols_mandante }} x {{ p.gols_visitante }}
+                    </div>
+                    {% endif %}
                   {% else %}
-                    <span class="text-muted">—</span>
-                    <span class="vs-sep">x</span>
-                    <span class="text-muted">—</span>
-                    <span class="badge-bloqueado ms-1">bloqueado</span>
+                    <div class="d-flex align-items-center gap-1">
+                      <span class="text-muted">—</span>
+                      <span class="vs-sep">x</span>
+                      <span class="text-muted">—</span>
+                    </div>
                   {% endif %}
                 {% else %}
-                  <input type="number" min="0" class="form-control score-input"
-                         id="m-{{ jid }}" value="{{ p.gols_mandante if p else '' }}" placeholder="–">
-                  <span class="vs-sep">x</span>
-                  <input type="number" min="0" class="form-control score-input"
-                         id="v-{{ jid }}" value="{{ p.gols_visitante if p else '' }}" placeholder="–">
+                  <div class="d-flex align-items-center gap-1">
+                    <input type="number" min="0" class="form-control score-input"
+                           id="m-{{ jid }}" value="{{ p.gols_mandante if p else '' }}" placeholder="–">
+                    <span class="vs-sep">x</span>
+                    <input type="number" min="0" class="form-control score-input"
+                           id="v-{{ jid }}" value="{{ p.gols_visitante if p else '' }}" placeholder="–">
+                  </div>
                 {% endif %}
               </div>
 
@@ -82,6 +103,13 @@
                 <i class="fa fa-question-circle fa-2x text-secondary"></i>
                 {% endif %}
                 <span class="team-name">{{ jogo.nome_visitante }}</span>
+                {% if jogo.status == 'tbd' %}
+                  <span class="badge-bloqueado ms-1" style="background:#6f42c1">a definir</span>
+                {% elif jogo.status == 'encerrado' %}
+                  <span class="badge-bloqueado ms-1" style="background:#198754">Encerrado</span>
+                {% elif jogo.status == 'em_andamento' %}
+                  <span class="badge-bloqueado ms-1" style="background:#fd7e14">Em Andamento</span>
+                {% endif %}
               </div>
 
               <!-- Data -->

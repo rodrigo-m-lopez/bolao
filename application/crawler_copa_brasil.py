@@ -15,6 +15,7 @@ Execução manual:
 """
 
 import os
+import time
 import logging
 from datetime import datetime
 
@@ -39,18 +40,26 @@ def _headers():
     return {'X-Auth-Token': api_key}
 
 
-def _get(path, params=None):
+def _get(path, params=None, _retries=3):
     url = _BASE_URL + path
-    try:
-        resp = requests.get(url, headers=_headers(), params=params, timeout=_TIMEOUT)
-        resp.raise_for_status()
-        return resp.json()
-    except requests.exceptions.Timeout:
-        logger.error('Timeout ao acessar %s', url)
-        raise
-    except requests.exceptions.HTTPError as exc:
-        logger.error('HTTP %s ao acessar %s: %s', exc.response.status_code, url, exc)
-        raise
+    for attempt in range(_retries):
+        try:
+            resp = requests.get(url, headers=_headers(), params=params, timeout=_TIMEOUT)
+            if resp.status_code == 429:
+                wait = int(resp.headers.get('Retry-After', 65))
+                logger.warning('Rate limit atingido em %s — aguardando %ds (tentativa %d/%d)',
+                               url, wait, attempt + 1, _retries)
+                time.sleep(wait)
+                continue
+            resp.raise_for_status()
+            return resp.json()
+        except requests.exceptions.Timeout:
+            logger.error('Timeout ao acessar %s', url)
+            raise
+        except requests.exceptions.HTTPError as exc:
+            logger.error('HTTP %s ao acessar %s: %s', exc.response.status_code, url, exc)
+            raise
+    raise RuntimeError(f'Falhou após {_retries} tentativas: {url}')
 
 
 # ── Seed ─────────────────────────────────────────────────────────────────────

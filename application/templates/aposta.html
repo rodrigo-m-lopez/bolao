@@ -56,11 +56,6 @@
               <span class="text-muted px-2">—</span>
               <span class="vs-sep">x</span>
               <span class="text-muted px-2">—</span>
-              {% if jogo.tbd %}
-              <span class="badge-bloqueado" style="background:#6f42c1">a definir</span>
-              {% else %}
-              <span class="badge-bloqueado">bloqueado</span>
-              {% endif %}
             </div>
             {% else %}
             <div class="d-flex align-items-center gap-1">
@@ -80,6 +75,13 @@
               <i class="fa fa-question-circle fa-2x text-secondary"></i>
               {% endif %}
               <span class="team-name">{{ jogo.nome_visitante }}</span>
+              {% if jogo.status == 'tbd' %}
+                <span class="badge-bloqueado ms-1" style="background:#6f42c1">a definir</span>
+              {% elif jogo.status == 'encerrado' %}
+                <span class="badge-bloqueado ms-1" style="background:#198754">Encerrado</span>
+              {% elif jogo.status == 'em_andamento' %}
+                <span class="badge-bloqueado ms-1" style="background:#fd7e14">Em Andamento</span>
+              {% endif %}
             </div>
 
             <!-- Data/local -->

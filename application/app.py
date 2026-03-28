@@ -75,12 +75,12 @@ def _init_dev_db(db):
         from application.crawler_2026 import seed_database
         from application.crawler_brasileirao import seed_brasileirao
         from application.crawler_libertadores import seed_libertadores
-        from application.crawler_copa_brasil import seed_copa_brasil
+        from application.crawler_sulamericana import seed_sulamericana
         _crawlers = [
-            ('Copa do Mundo 2026',              seed_database),
+            ('Copa do Mundo 2026',                seed_database),
             ('Campeonato Brasileiro Série A 2026', seed_brasileirao),
-            ('Copa Libertadores 2026',          seed_libertadores),
-            ('Copa do Brasil 2026',             seed_copa_brasil),
+            ('Copa Libertadores 2026',            seed_libertadores),
+            ('Copa Sulamericana 2026',            seed_sulamericana),
         ]
         for nome_comp, fn in _crawlers:
             try:
@@ -90,6 +90,9 @@ def _init_dev_db(db):
     else:
         from application.dev_seed import populate_dev_db
         populate_dev_db(db)
+
+    from application.dev_seed import seed_sulamericana_mock
+    seed_sulamericana_mock(db)
 
 
 if DEV_MOCK_AUTH:

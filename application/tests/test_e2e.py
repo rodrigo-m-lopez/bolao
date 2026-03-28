@@ -463,7 +463,7 @@ class TestSeedFromApiStartup:
             with patch('application.crawler_2026._get', side_effect=fake_get):
                 with patch('application.crawler_brasileirao._get', side_effect=fake_get_br):
                     with patch('application.crawler_libertadores._get', side_effect=_empty):
-                        with patch('application.crawler_copa_brasil._get', side_effect=_empty):
+                        with patch('application.crawler_sulamericana._get', side_effect=_empty):
                             from application.app import _init_dev_db
                             _init_dev_db(db)
 
@@ -493,7 +493,7 @@ class TestSeedFromApiStartup:
                        teams_resp if 'teams' in p else matches_resp):
                 with patch('application.crawler_brasileirao._get', side_effect=_empty):
                     with patch('application.crawler_libertadores._get', side_effect=_empty):
-                        with patch('application.crawler_copa_brasil._get', side_effect=_empty):
+                        with patch('application.crawler_sulamericana._get', side_effect=_empty):
                             from application.app import _init_dev_db
                             _init_dev_db(db)
 
@@ -655,52 +655,52 @@ class TestLibertadoresSeedMock:
             "Formulário de novo bolão deve listar Copa Libertadores 2026"
 
 
-# ── 12. Copa do Brasil 2026 ───────────────────────────────────────────────────
+# ── 12. Copa Sulamericana 2026 ────────────────────────────────────────────────
 
-class TestCopaBrasilSeedMock:
-    """Dev seed deve incluir jogos da Copa do Brasil 2026."""
+class TestSulamericanaSeedMock:
+    """Dev seed deve incluir jogos da Copa Sulamericana 2026."""
 
-    def test_dev_seed_cria_jogos_copa_brasil(self, app):
+    def test_dev_seed_cria_jogos_sulamericana(self, app):
         db = app_module.client[os.environ.get('MONGO_DB_NAME', 'dev')]
         from application.dev_seed import populate_dev_db
         populate_dev_db(db)
-        count = db.jogo.count_documents({'competicao': 'Copa do Brasil 2026'})
+        count = db.jogo.count_documents({'competicao': 'Copa Sulamericana 2026'})
         assert count > 0, \
-            f"populate_dev_db deve criar jogos da Copa do Brasil, encontrou {count}"
+            f"populate_dev_db deve criar jogos da Sulamericana, encontrou {count}"
 
-    def test_nova_aposta_copa_brasil_exibe_jogos_corretos(self, logged_in, app):
+    def test_nova_aposta_sulamericana_exibe_jogos_corretos(self, logged_in, app):
         db = app_module.client[os.environ.get('MONGO_DB_NAME', 'dev')]
         from application.dev_seed import populate_dev_db
         populate_dev_db(db)
 
         uid = db.usuario.find_one({'email': 'dev@local.test'})['_id']
         db.bolao.insert_one({
-            'nome': 'Bolão Copa Brasil',
+            'nome': 'Bolão Sulamericana',
             'usuario': uid,
             'valor': 10,
             'premiacao': '100%',
             'descricao': '',
-            'competicao': 'Copa do Brasil 2026',
+            'competicao': 'Copa Sulamericana 2026',
         })
 
-        r = logged_in.get('/Bolão Copa Brasil/nova_aposta')
+        r = logged_in.get('/Bolão Sulamericana/nova_aposta')
         assert r.status_code == 200, \
-            f"nova_aposta Copa do Brasil retornou {r.status_code}: {r.data[:300]}"
+            f"nova_aposta Sulamericana retornou {r.status_code}: {r.data[:300]}"
 
         # Verifica pelo nome do time (template exibe nome_mandante)
-        cbr_clube = db.selecao.find_one({'sigla': 'GRE'})
-        assert cbr_clube is not None, "Clube Grêmio deve existir no banco"
-        assert cbr_clube['nome'].encode('utf-8') in r.data, \
-            "Bolão da Copa do Brasil deve exibir times da Copa do Brasil (Grêmio)"
+        sul_clube = db.selecao.find_one({'sigla': 'CAP'})
+        assert sul_clube is not None, "Clube Athletico-PR deve existir no banco"
+        assert sul_clube['nome'].encode('utf-8') in r.data, \
+            "Bolão da Sulamericana deve exibir times da Sulamericana (Athletico-PR)"
 
-        cbr_jogos = db.jogo.count_documents({'competicao': 'Copa do Brasil 2026'})
-        assert cbr_jogos > 0, "Deve haver jogos da Copa do Brasil no banco"
+        sul_jogos = db.jogo.count_documents({'competicao': 'Copa Sulamericana 2026'})
+        assert sul_jogos > 0, "Deve haver jogos da Sulamericana no banco"
 
-    def test_copa_brasil_competicao_disponivel(self, logged_in):
+    def test_sulamericana_competicao_disponivel(self, logged_in):
         r = logged_in.get('/novo_bolao')
         assert r.status_code == 200
-        assert 'Copa do Brasil 2026'.encode('utf-8') in r.data, \
-            "Formulário de novo bolão deve listar Copa do Brasil 2026"
+        assert 'Copa Sulamericana 2026'.encode('utf-8') in r.data, \
+            "Formulário de novo bolão deve listar Copa Sulamericana 2026"
 
 
 # ── 13. Status das partidas ───────────────────────────────────────────────────

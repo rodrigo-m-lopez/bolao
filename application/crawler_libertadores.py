@@ -1,42 +1,33 @@
 # coding: utf-8
 """
-Crawler / seeder para a Copa do Mundo 2026.
+Crawler / seeder para a Copa Libertadores 2026.
 
 Usa a API gratuita football-data.org (v4) para:
-  1. seed_database(db)     — popula seleções e jogos da fase de grupos
-  2. atualiza_resultados(db) — atualiza placares dos jogos já encerrados
+  1. seed_libertadores(db)        — popula clubes e jogos da competição
+  2. atualiza_resultados_lib(db)  — atualiza placares dos jogos encerrados
 
 Variável de ambiente necessária:
   FOOTBALL_DATA_API_KEY — chave gratuita em https://www.football-data.org/client/register
 
 Execução manual:
-  python -m application.crawler_2026 seed       # popula times e jogos
-  python -m application.crawler_2026 update     # atualiza resultados
+  python -m application.crawler_libertadores seed    # popula times e jogos
+  python -m application.crawler_libertadores update  # atualiza resultados
 """
 
 import os
 import time
 import logging
-import sys
-from datetime import datetime, timezone
+from datetime import datetime
 
 import requests
-from pymongo import ASCENDING
 
 logger = logging.getLogger(__name__)
 
 _BASE_URL = 'https://api.football-data.org/v4'
-_COMPETITION = 'WC'
+_COMPETITION = 'CLI'   # Copa Libertadores no football-data.org
 _SEASON = 2026
 _TIMEOUT = 15
-
-# Mapeamento grupo API → nome exibido na tela
-_GRUPOS = {
-    'GROUP_A': 'Grupo A', 'GROUP_B': 'Grupo B', 'GROUP_C': 'Grupo C',
-    'GROUP_D': 'Grupo D', 'GROUP_E': 'Grupo E', 'GROUP_F': 'Grupo F',
-    'GROUP_G': 'Grupo G', 'GROUP_H': 'Grupo H', 'GROUP_I': 'Grupo I',
-    'GROUP_J': 'Grupo J', 'GROUP_K': 'Grupo K', 'GROUP_L': 'Grupo L',
-}
+_COMPETICAO = 'Copa Libertadores 2026'
 
 
 def _headers():
@@ -73,44 +64,39 @@ def _get(path, params=None, _retries=3):
 
 # ── Seed ─────────────────────────────────────────────────────────────────────
 
-def seed_database(db):
-    """Popula o banco com as seleções e jogos da fase de grupos de 2026.
+def seed_libertadores(db):
+    """Popula o banco com clubes e jogos da Copa Libertadores 2026.
 
     Idempotente: usa upsert, pode ser executado mais de uma vez sem duplicar dados.
     """
-    logger.info('Iniciando seed da Copa 2026...')
-    _seed_selecoes(db)
+    logger.info('Iniciando seed da Copa Libertadores 2026...')
+    _seed_clubes(db)
     _seed_jogos(db)
-    logger.info('Seed concluído.')
+    logger.info('Seed da Copa Libertadores concluído.')
 
 
-def _seed_selecoes(db):
-    logger.info('Buscando seleções na API...')
+def _seed_clubes(db):
+    logger.info('Buscando clubes na API...')
     data = _get(f'/competitions/{_COMPETITION}/teams', params={'season': _SEASON})
     teams = data.get('teams', [])
-    logger.info('%d seleções recebidas', len(teams))
+    logger.info('%d clubes recebidos', len(teams))
 
     for team in teams:
         sigla = (team.get('tla') or team.get('shortName') or team.get('name') or '???')[:3].upper()
         nome = team.get('name') or sigla
         escudo = team.get('crest', '')
 
-        # O grupo vem nos standings, não no endpoint de times — deixamos em branco
-        # e preenchemos ao processar os jogos
         db.selecao.update_one(
             {'sigla': sigla},
             {'$setOnInsert': {'sigla': sigla, 'nome': nome, 'escudo': escudo, 'grupo': ''}},
             upsert=True,
         )
-    logger.info('Seleções inseridas/atualizadas.')
+    logger.info('Clubes inseridos/atualizados.')
 
 
 def _seed_jogos(db):
-    logger.info('Buscando jogos da fase de grupos na API...')
-    data = _get(
-        f'/competitions/{_COMPETITION}/matches',
-        params={'season': _SEASON, 'stage': 'GROUP_STAGE'},
-    )
+    logger.info('Buscando jogos da Libertadores na API...')
+    data = _get(f'/competitions/{_COMPETITION}/matches', params={'season': _SEASON})
     matches = data.get('matches', [])
     logger.info('%d jogos recebidos', len(matches))
 
@@ -120,30 +106,18 @@ def _seed_jogos(db):
     logger.info('Jogos inseridos/atualizados.')
 
 
-def _get_or_create_tbd_selecao(db):
-    """Retorna (criando se necessário) o documento de seleção placeholder para times TBD."""
-    doc = db.selecao.find_one({'sigla': '???'})
-    if doc is None:
-        db.selecao.insert_one({'sigla': '???', 'nome': 'A Definir', 'escudo': '', 'grupo': ''})
-        doc = db.selecao.find_one({'sigla': '???'})
-    return doc
-
-
 def _upsert_jogo(db, match):
     home = match['homeTeam']
     away = match['awayTeam']
 
-    sigla_mandante = (home.get('tla') or home.get('shortName') or home.get('name') or '???')[:3].upper()
-    sigla_visitante = (away.get('tla') or away.get('shortName') or away.get('name') or '???')[:3].upper()
-    nome_jogo = f'{sigla_mandante} x {sigla_visitante}'
+    sigla_m = (home.get('tla') or home.get('shortName') or home.get('name') or '???')[:3].upper()
+    sigla_v = (away.get('tla') or away.get('shortName') or away.get('name') or '???')[:3].upper()
+    nome_jogo = f'{sigla_m} x {sigla_v}'
 
     grupo_api = match.get('group') or ''
-    grupo = _GRUPOS.get(grupo_api, grupo_api)
-
-    # Rodada dentro do grupo (matchday 1-3)
     rodada = match.get('matchday', 1)
+    grupo = grupo_api if grupo_api else f'Rodada {rodada}'
 
-    # Data/hora em UTC → datetime sem tz (padrão do app)
     utc_str = match.get('utcDate', '')
     try:
         data = datetime.fromisoformat(utc_str.replace('Z', '+00:00')).replace(tzinfo=None)
@@ -152,44 +126,31 @@ def _upsert_jogo(db, match):
 
     score = match.get('score', {})
     ft = score.get('fullTime', {})
-    gols_mandante = ft.get('home')
-    gols_visitante = ft.get('away')
+    gols_m = ft.get('home')
+    gols_v = ft.get('away')
 
-    # Referências para ObjectId das seleções
-    sel_mandante = db.selecao.find_one({'sigla': sigla_mandante})
-    sel_visitante = db.selecao.find_one({'sigla': sigla_visitante})
+    sel_m = db.selecao.find_one({'sigla': sigla_m})
+    sel_v = db.selecao.find_one({'sigla': sigla_v})
 
-    if sel_mandante is None or sel_visitante is None:
-        tbd = _get_or_create_tbd_selecao(db)
-        if sel_mandante is None:
-            logger.info('Time mandante "%s" não encontrado — usando placeholder A Definir', sigla_mandante)
-            sel_mandante = tbd
-        if sel_visitante is None:
-            logger.info('Time visitante "%s" não encontrado — usando placeholder A Definir', sigla_visitante)
-            sel_visitante = tbd
-
-    # Atualiza grupo na seleção se ainda em branco (nunca no placeholder ???)
-    if sel_mandante.get('sigla') != '???' and not sel_mandante.get('grupo'):
-        db.selecao.update_one({'_id': sel_mandante['_id']}, {'$set': {'grupo': grupo}})
-    if sel_visitante.get('sigla') != '???' and not sel_visitante.get('grupo'):
-        db.selecao.update_one({'_id': sel_visitante['_id']}, {'$set': {'grupo': grupo}})
+    if sel_m is None or sel_v is None:
+        logger.warning('Clube não encontrado para jogo %s — pulando', nome_jogo)
+        return
 
     venue = match.get('venue') or ''
 
     db.jogo.update_one(
-        {'nome': nome_jogo, 'competicao': 'Copa do Mundo 2026'},
+        {'nome': nome_jogo, 'competicao': _COMPETICAO},
         {'$set': {
             'nome': nome_jogo,
             'data': data,
             'local': venue,
-            'mandante': sel_mandante['_id'],
-            'visitante': sel_visitante['_id'],
-            'gols_mandante': gols_mandante,
-            'gols_visitante': gols_visitante,
+            'mandante': sel_m['_id'],
+            'visitante': sel_v['_id'],
+            'gols_mandante': gols_m,
+            'gols_visitante': gols_v,
             'grupo': grupo,
             'rodada': rodada,
-            'url_rodada': f'/rodada/{rodada}',
-            'competicao': 'Copa do Mundo 2026',
+            'competicao': _COMPETICAO,
         }},
         upsert=True,
     )
@@ -241,15 +202,12 @@ def _calcula_pontos_apostas(db, id_jogo, gols_m_real, gols_v_real):
         logger.info('Pontuação: aposta=%s jogo=%s pontos=%d', aposta['nome'], id_jogo, pontos)
 
 
-def atualiza_resultados(db):
-    """Atualiza placares dos jogos encerrados e recalcula pontuações.
-
-    Deve ser chamado periodicamente durante a Copa (ex.: a cada 5 minutos).
-    """
-    logger.info('Atualizando resultados...')
+def atualiza_resultados_lib(db):
+    """Atualiza placares dos jogos encerrados e recalcula pontuações."""
+    logger.info('Atualizando resultados da Copa Libertadores...')
     data = _get(
         f'/competitions/{_COMPETITION}/matches',
-        params={'season': _SEASON, 'stage': 'GROUP_STAGE', 'status': 'FINISHED'},
+        params={'season': _SEASON, 'status': 'FINISHED'},
     )
     matches = data.get('matches', [])
     logger.info('%d jogos encerrados recebidos', len(matches))
@@ -268,12 +226,11 @@ def atualiza_resultados(db):
         if gols_m is None or gols_v is None:
             continue
 
-        jogo = db.jogo.find_one({'nome': nome_jogo, 'competicao': 'Copa do Mundo 2026'})
+        jogo = db.jogo.find_one({'nome': nome_jogo, 'competicao': _COMPETICAO})
         if jogo is None:
-            logger.warning('Jogo %s não encontrado no banco — execute seed primeiro', nome_jogo)
+            logger.warning('Jogo %s não encontrado — execute seed primeiro', nome_jogo)
             continue
 
-        # Só recalcula se o placar mudou
         if jogo.get('gols_mandante') == gols_m and jogo.get('gols_visitante') == gols_v:
             continue
 
@@ -284,7 +241,7 @@ def atualiza_resultados(db):
         logger.info('Placar atualizado: %s %d x %d', nome_jogo, gols_m, gols_v)
         _calcula_pontos_apostas(db, jogo['_id'], gols_m, gols_v)
 
-    logger.info('Atualização de resultados concluída.')
+    logger.info('Atualização de resultados da Copa Libertadores concluída.')
 
 
 # ── Entrypoint ────────────────────────────────────────────────────────────────
@@ -300,9 +257,9 @@ if __name__ == '__main__':
     _db = _client[os.environ.get('MONGO_DB_NAME', 'dev')]
 
     if cmd == 'seed':
-        seed_database(_db)
+        seed_libertadores(_db)
     elif cmd == 'update':
-        atualiza_resultados(_db)
+        atualiza_resultados_lib(_db)
     else:
-        print(f'Uso: python -m application.crawler_2026 [seed|update]')
+        print('Uso: python -m application.crawler_libertadores [seed|update]')
         sys.exit(1)

@@ -41,8 +41,16 @@ def create_indexes(db):
     )
     db.pontuacao.create_index([('aposta', ASCENDING)], name='idx_pontuacao_aposta')
 
-    # jogo: looked up by nome (crawler), data (obtem_horarios_rodadas), grupo+rodada+data (sort)
-    db.jogo.create_index([('nome', ASCENDING)], unique=True, name='idx_jogo_nome')
+    # jogo: upsert key é {nome, competicao}; nome sozinho não é único entre competições
+    # Remove índice legado (nome único sem competicao) se ainda existir
+    try:
+        db.jogo.drop_index('idx_jogo_nome')
+    except Exception:
+        pass
+    db.jogo.create_index(
+        [('nome', ASCENDING), ('competicao', ASCENDING)],
+        unique=True, name='idx_jogo_nome_competicao',
+    )
     db.jogo.create_index([('data', ASCENDING)], name='idx_jogo_data')
     db.jogo.create_index(
         [('grupo', ASCENDING), ('rodada', ASCENDING), ('data', ASCENDING)],

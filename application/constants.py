@@ -19,5 +19,5 @@ COMPETICOES_DISPONIVEIS = [
     'Copa do Mundo 2026',
     'Campeonato Brasileiro Série A 2026',
     'Copa Libertadores 2026',
-    'Copa do Brasil 2026',
+    'Copa Sulamericana 2026',
 ]
