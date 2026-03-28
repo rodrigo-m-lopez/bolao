@@ -13,3 +13,9 @@ CAMPOS_PONTUACAO_DTO = ('pontuacao', 'placar_exato', 'vencedor_ou_empate', 'gols
 
 # Campos do DTO referentes à rodada anterior (para calcular variação)
 CAMPOS_PONTUACAO_ANTERIOR = ('pontuacao_ant', 'placar_exato_ant', 'vencedor_ou_empate_ant', 'gols_de_um_time_ant')
+
+# Competições disponíveis para criação de bolão
+COMPETICOES_DISPONIVEIS = [
+    'Copa do Mundo 2026',
+    'Campeonato Brasileiro Série A 2026',
+]

@@ -23,6 +23,7 @@ from application.constants import (
     CAMPOS_PONTUACAO_BANCO,
     CAMPOS_PONTUACAO_DTO,
     CAMPOS_PONTUACAO_ANTERIOR,
+    COMPETICOES_DISPONIVEIS,
 )
 
 from flask_login import LoginManager, current_user, login_user, logout_user, login_required
@@ -72,7 +73,9 @@ def _init_dev_db(db):
     """
     if os.environ.get('SEED_FROM_API') == 'true' and os.environ.get('FOOTBALL_DATA_API_KEY'):
         from application.crawler_2026 import seed_database
+        from application.crawler_brasileirao import seed_brasileirao
         seed_database(db)
+        seed_brasileirao(db)
     else:
         from application.dev_seed import populate_dev_db
         populate_dev_db(db)
@@ -115,10 +118,10 @@ def inicio():
 @login_required
 def novo_bolao():
     if request.method == 'GET':
-        return render_template('novo_bolao.html')
+        return render_template('novo_bolao.html', competicoes=COMPETICOES_DISPONIVEIS)
     else:
         if not valida_informacoes_bolao(request.form):
-            return render_template('novo_bolao.html')
+            return render_template('novo_bolao.html', competicoes=COMPETICOES_DISPONIVEIS)
         cria_bolao(request.form)
         return lista_bolao()
 
@@ -137,7 +140,9 @@ def lista_bolao():
 @app.route('/<bolao>/nova_aposta', methods=['GET', 'POST'])
 @login_required
 def nova_aposta(bolao):
-    grupos, todos_jogos = monta_dto_grupos()
+    bolao_doc = tbl_bolao.find_one({'nome': bolao}) or {}
+    competicao = bolao_doc.get('competicao', '')
+    grupos, todos_jogos = monta_dto_grupos(competicao)
     if request.method == 'GET':
         return render_template('aposta.html', grupos=grupos, bolao=bolao)
     else:
@@ -164,7 +169,9 @@ def descricao(bolao):
 @app.route('/<bolao>/ranking')
 def ranking(bolao):
     lista_apostas = monta_dto_apostas(bolao)
-    return render_template('ranking.html', bolao=bolao, lista_apostas=lista_apostas)
+    bolao_doc = tbl_bolao.find_one({'nome': bolao}) or {}
+    competicao = bolao_doc.get('competicao', '')
+    return render_template('ranking.html', bolao=bolao, lista_apostas=lista_apostas, competicao=competicao)
 
 
 @app.route('/<bolao>/admin')
@@ -252,7 +259,8 @@ def remover_bolao(bolao):
 def palpite(bolao, nome_aposta):
     id_bolao = get_bolao_id(bolao)
     aposta = tbl_aposta.find_one({'nome': nome_aposta, 'bolao': id_bolao})
-    _, todos_jogos = monta_dto_grupos()
+    bolao_doc = tbl_bolao.find_one({'nome': bolao}) or {}
+    _, todos_jogos = monta_dto_grupos(bolao_doc.get('competicao', ''))
     palpites = monta_palpites(aposta, todos_jogos)
     pontuacoes = monta_pontuacoes(aposta, todos_jogos)
     lista_jogos_ordem_tela = []
@@ -264,7 +272,8 @@ def palpite(bolao, nome_aposta):
 
 @app.route('/<bolao>/jogo/<nome_jogo>')
 def jogo(bolao, nome_jogo):
-    _, todos_jogos = monta_dto_grupos()
+    bolao_doc = tbl_bolao.find_one({'nome': bolao}) or {}
+    _, todos_jogos = monta_dto_grupos(bolao_doc.get('competicao', ''))
     jogo_dto = next((x for x in todos_jogos if x['nome'] == nome_jogo), None)
     if jogo_dto is None:
         flash('Jogo não encontrado.')
@@ -292,7 +301,9 @@ def jogo(bolao, nome_jogo):
 def editar_palpites(bolao, nome_aposta):
     id_bolao = get_bolao_id(bolao)
     aposta = get_aposta_by_nome(nome_aposta, id_bolao)
-    grupos, todos_jogos = monta_dto_grupos()
+    bolao_doc = tbl_bolao.find_one({'nome': bolao}) or {}
+    competicao = bolao_doc.get('competicao', '')
+    grupos, todos_jogos = monta_dto_grupos(competicao)
     palpites_map = {str(p['jogo']): p for p in tbl_palpite.find({'aposta': aposta['_id']})}
     return render_template('editar_palpites.html', bolao=bolao, nome_aposta=nome_aposta,
                            grupos=grupos, palpites_map=palpites_map)
@@ -586,7 +597,8 @@ def cria_bolao(form):
                           'usuario': current_user.mongo_id,
                           'valor': int(form['inputValor']),
                           'premiacao': form['inputPremiacao'],
-                          'descricao': form['inputDescricao']})
+                          'descricao': form['inputDescricao'],
+                          'competicao': form['inputCompeticao']})
 
 
 def valida_nome_bolao_ja_existe(nome_bolao):
@@ -621,6 +633,10 @@ def valida_senhas_iguais(senha1, senha2):
 
 def valida_informacoes_bolao(form):
     algum_erro = False
+    competicao = form.get('inputCompeticao', '')
+    if competicao not in COMPETICOES_DISPONIVEIS:
+        flash('Selecione uma competição válida.')
+        algum_erro = True
     validacoes = [valida_nome_bolao_ja_existe(form['inputNome']),
                   valida_campo_preenchido(form['inputValor'], 'Valor'),
                   valida_campo_numerico(form['inputValor']),
@@ -897,11 +913,15 @@ def monta_dto_boloes():
     return dto_boloes
 
 
-def monta_dto_grupos():
-    """Return (grupos_list, todos_jogos_list) — always fresh from DB, no global state."""
+def monta_dto_grupos(competicao=None):
+    """Return (grupos_list, todos_jogos_list) — always fresh from DB, no global state.
+
+    Se `competicao` for informada, filtra apenas os jogos daquela competição.
+    """
+    filtro = {'competicao': competicao} if competicao else {}
     grupos_dict = {}
     todos_jogos_local = []
-    for jogo in tbl_jogo.find().sort(
+    for jogo in tbl_jogo.find(filtro).sort(
             [("grupo", pymongo.ASCENDING), ("rodada", pymongo.ASCENDING), ("data", pymongo.ASCENDING)]):
         nome_grupo = jogo["grupo"]
         if nome_grupo not in grupos_dict:

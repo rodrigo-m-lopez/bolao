@@ -3,9 +3,14 @@
 
 {% block content %}
 <div class="card">
-  <div class="card-header d-flex align-items-center gap-2">
+  <div class="card-header d-flex align-items-center gap-2 flex-wrap">
     <i class="fa fa-list-ol"></i>
     <span>Ranking — {{ bolao }}</span>
+    {% if competicao %}
+    <span class="badge ms-auto" style="background:rgba(255,255,255,.2);font-size:.75rem;font-weight:500">
+      <i class="fa fa-trophy me-1"></i>{{ competicao }}
+    </span>
+    {% endif %}
   </div>
   <div class="table-responsive">
     <table class="table table-hover table-sm mb-0">

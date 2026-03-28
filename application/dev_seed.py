@@ -41,6 +41,26 @@ _SELECOES = [
     {'nome': 'Alemanha',  'sigla': 'GER', 'escudo': '', 'grupo': 'B'},
 ]
 
+# Clubes mock do Brasileirão (siglas únicas, sem conflito com seleções)
+_CLUBES_BR = [
+    {'nome': 'Flamengo',    'sigla': 'FLA', 'escudo': '', 'grupo': ''},
+    {'nome': 'Palmeiras',   'sigla': 'PAL', 'escudo': '', 'grupo': ''},
+    {'nome': 'São Paulo',   'sigla': 'SAO', 'escudo': '', 'grupo': ''},
+    {'nome': 'Corinthians', 'sigla': 'COR', 'escudo': '', 'grupo': ''},
+    {'nome': 'Fluminense',  'sigla': 'FLU', 'escudo': '', 'grupo': ''},
+    {'nome': 'Atlético-MG', 'sigla': 'CAM', 'escudo': '', 'grupo': ''},
+]
+
+# (nome, rodada, delta, gm, gv, mandante_sigla, visitante_sigla)
+_JOGOS_BR = [
+    ('FLA x PAL', 1, timedelta(days=-2),  2,    1,    'FLA', 'PAL'),
+    ('SAO x COR', 1, timedelta(days=-1),  None, None, 'SAO', 'COR'),
+    ('FLU x CAM', 1, timedelta(hours=3),  None, None, 'FLU', 'CAM'),
+    ('PAL x SAO', 2, timedelta(days=4),   None, None, 'PAL', 'SAO'),
+    ('COR x FLA', 2, timedelta(days=5),   None, None, 'COR', 'FLA'),
+    ('CAM x FLU', 2, timedelta(days=6),   None, None, 'CAM', 'FLU'),
+]
+
 
 def populate_dev_db(db):
     """Popula o banco com dados de seed se ainda estiver vazio."""
@@ -68,10 +88,28 @@ def populate_dev_db(db):
             'visitante': sel[v_sigla],
             'gols_mandante': gm,
             'gols_visitante': gv,
+            'competicao': 'Copa do Mundo 2026',
         }).inserted_id
         jogo_ids[nome] = jid
 
     todos_jids = list(jogo_ids.values())
+
+    # ── Jogos do Brasileirão ──────────────────────────────────────────────────
+    db.selecao.insert_many(_CLUBES_BR)
+    sel_br = {s['sigla']: s['_id'] for s in db.selecao.find({'grupo': ''})}
+    for nome, rodada, delta, gm, gv, m_sigla, v_sigla in _JOGOS_BR:
+        db.jogo.insert_one({
+            'nome': nome,
+            'grupo': f'Rodada {rodada}',
+            'rodada': rodada,
+            'data': now + delta,
+            'local': 'Estádio Dev',
+            'mandante': sel_br[m_sigla],
+            'visitante': sel_br[v_sigla],
+            'gols_mandante': gm,
+            'gols_visitante': gv,
+            'competicao': 'Campeonato Brasileiro Série A 2026',
+        })
 
     # ── Usuário dev ───────────────────────────────────────────────────────────
     dev_email = 'dev@local.test'
@@ -95,6 +133,7 @@ def populate_dev_db(db):
             'Bolão criado automaticamente para testar o cadastro incremental '
             'de palpites. Cada aposta abaixo demonstra um cenário diferente.'
         ),
+        'competicao': 'Copa do Mundo 2026',
     }).inserted_id
 
     # ── Helper ────────────────────────────────────────────────────────────────

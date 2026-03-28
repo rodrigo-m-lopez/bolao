@@ -68,6 +68,7 @@ def _setup_bolao(db, nome='Bolão E2E'):
     bid = db.bolao.insert_one({
         'nome': nome, 'usuario': uid,
         'valor': 10, 'premiacao': '100% ao 1º', 'descricao': '',
+        'competicao': 'Copa do Mundo 2026',
     }).inserted_id
 
     now = datetime.utcnow()
@@ -79,6 +80,7 @@ def _setup_bolao(db, nome='Bolão E2E'):
         'data': now + timedelta(days=3),
         'local': 'Estádio', 'mandante': sel_a, 'visitante': sel_b,
         'gols_mandante': None, 'gols_visitante': None,
+        'competicao': 'Copa do Mundo 2026',
     }).inserted_id
 
     jogo_passado = db.jogo.insert_one({
@@ -86,6 +88,7 @@ def _setup_bolao(db, nome='Bolão E2E'):
         'data': now - timedelta(days=1),
         'local': 'Estádio', 'mandante': sel_b, 'visitante': sel_a,
         'gols_mandante': 1, 'gols_visitante': 0,
+        'competicao': 'Copa do Mundo 2026',
     }).inserted_id
 
     aid = db.aposta.insert_one({
@@ -180,6 +183,7 @@ class TestCriacaoBolao:
             'inputValor': '15',
             'inputPremiacao': '100% ao 1º',
             'inputDescricao': '',
+            'inputCompeticao': 'Copa do Mundo 2026',
         }, follow_redirects=True)
         assert r.status_code == 200, f"Criar bolão retornou {r.status_code}"
         assert 'Bolão Teste E2E'.encode('utf-8') in r.data, \
@@ -193,6 +197,7 @@ class TestCriacaoBolao:
             'inputValor': '10',
             'inputPremiacao': '100%',
             'inputDescricao': '',
+            'inputCompeticao': 'Copa do Mundo 2026',
         }
         logged_in.post('/novo_bolao', data=dados, follow_redirects=True)
         r = logged_in.post('/novo_bolao', data=dados, follow_redirects=True)
@@ -343,6 +348,7 @@ class TestJogoTBD:
             'mandante': db.selecao.find_one({'sigla': 'BRA'})['_id'],
             'visitante': tbd_sel,
             'gols_mandante': None, 'gols_visitante': None,
+            'competicao': 'Copa do Mundo 2026',
         })
         return ctx
 
@@ -419,6 +425,7 @@ class TestSeedFromApiStartup:
 
     def test_seed_from_api_popula_jogos_no_banco(self, app):
         db = app_module.client[os.environ.get('MONGO_DB_NAME', 'dev')]
+        now = datetime.utcnow()
 
         teams_resp = self._api_teams_response()
         # matches_resp precisa ser gerado após teams serem inseridos
@@ -432,10 +439,30 @@ class TestSeedFromApiStartup:
                 return teams_resp
             return matches_resp
 
+        br_teams_resp = {'teams': [
+            {'tla': 'FLA', 'shortName': 'Flamengo',  'name': 'Flamengo',  'crest': ''},
+            {'tla': 'PAL', 'shortName': 'Palmeiras', 'name': 'Palmeiras', 'crest': ''},
+        ]}
+        br_matches_resp = {'matches': [
+            {
+                'homeTeam': {'tla': 'FLA', 'shortName': 'Flamengo',  'name': 'Flamengo'},
+                'awayTeam': {'tla': 'PAL', 'shortName': 'Palmeiras', 'name': 'Palmeiras'},
+                'utcDate': (now + timedelta(days=5)).strftime('%Y-%m-%dT%H:%M:%SZ'),
+                'matchday': 1, 'venue': 'Maracanã',
+                'score': {'fullTime': {'home': None, 'away': None}},
+            },
+        ]}
+
+        def fake_get_br(path, params=None):
+            if 'teams' in path:
+                return br_teams_resp
+            return br_matches_resp
+
         with patch.dict(os.environ, {'SEED_FROM_API': 'true', 'FOOTBALL_DATA_API_KEY': 'fake_key'}):
             with patch('application.crawler_2026._get', side_effect=fake_get):
-                from application.app import _init_dev_db
-                _init_dev_db(db)
+                with patch('application.crawler_brasileirao._get', side_effect=fake_get_br):
+                    from application.app import _init_dev_db
+                    _init_dev_db(db)
 
         assert db.jogo.count_documents({}) >= 2, \
             f"Após seed via API, banco deveria ter jogos: {db.jogo.count_documents({})} encontrados"
@@ -460,12 +487,115 @@ class TestSeedFromApiStartup:
         with patch.dict(os.environ, {'SEED_FROM_API': 'true', 'FOOTBALL_DATA_API_KEY': 'fake_key'}):
             with patch('application.crawler_2026._get', side_effect=lambda p, **kw:
                        teams_resp if 'teams' in p else matches_resp):
-                from application.app import _init_dev_db
-                _init_dev_db(db)
+                with patch('application.crawler_brasileirao._get', side_effect=lambda p, **kw:
+                           {'teams': []} if 'teams' in p else {'matches': []}):
+                    from application.app import _init_dev_db
+                    _init_dev_db(db)
 
         with app.test_client() as c:
             r = c.get('/intro')
         assert r.status_code == 200, f"/intro após seed API retornou {r.status_code}"
+
+
+# ── 9. Competição no bolão ────────────────────────────────────────────────────
+
+class TestCompeticaoBolao:
+    def test_novo_bolao_exibe_campo_competicao(self, logged_in):
+        r = logged_in.get('/novo_bolao')
+        assert r.status_code == 200
+        assert b'inputCompeticao' in r.data, \
+            "Formulário de novo bolão deve ter campo inputCompeticao"
+        assert 'Copa do Mundo 2026'.encode('utf-8') in r.data, \
+            "Deve listar Copa do Mundo 2026 como opção"
+        assert 'Campeonato Brasileiro'.encode('utf-8') in r.data, \
+            "Deve listar Campeonato Brasileiro como opção"
+
+    def test_criar_bolao_salva_competicao(self, logged_in):
+        csrf = _get_csrf(logged_in)
+        r = logged_in.post('/novo_bolao', data={
+            'csrf_token': csrf,
+            'inputNome': 'Bolão Copa 2026',
+            'inputValor': '20',
+            'inputPremiacao': '100% ao 1º',
+            'inputDescricao': '',
+            'inputCompeticao': 'Copa do Mundo 2026',
+        }, follow_redirects=True)
+        assert r.status_code == 200
+        db = app_module.client[os.environ.get('MONGO_DB_NAME', 'dev')]
+        bolao_doc = db.bolao.find_one({'nome': 'Bolão Copa 2026'})
+        assert bolao_doc is not None, "Bolão não foi criado no banco"
+        assert bolao_doc.get('competicao') == 'Copa do Mundo 2026', \
+            f"Campo competicao não salvo: {bolao_doc.get('competicao')}"
+
+    def test_competicao_invalida_nao_cria_bolao(self, logged_in):
+        csrf = _get_csrf(logged_in)
+        r = logged_in.post('/novo_bolao', data={
+            'csrf_token': csrf,
+            'inputNome': 'Bolão Inválido',
+            'inputValor': '10',
+            'inputPremiacao': '100%',
+            'inputDescricao': '',
+            'inputCompeticao': 'Campeonato Marciano',
+        }, follow_redirects=False)
+        assert r.status_code == 200, \
+            "Competição inválida deve reexibir formulário (status 200)"
+        db = app_module.client[os.environ.get('MONGO_DB_NAME', 'dev')]
+        assert db.bolao.find_one({'nome': 'Bolão Inválido'}) is None, \
+            "Bolão com competição inválida não deve ser criado"
+
+    def test_ranking_exibe_competicao(self, logged_in, app):
+        db = app_module.client[os.environ.get('MONGO_DB_NAME', 'dev')]
+        ctx = _setup_bolao(db)
+        db.bolao.update_one(
+            {'_id': ctx['bid']},
+            {'$set': {'competicao': 'Copa do Mundo 2026'}},
+        )
+        r = logged_in.get(f'/{ctx["bolao"]}/ranking')
+        assert r.status_code == 200
+        assert 'Copa do Mundo 2026'.encode('utf-8') in r.data, \
+            "Ranking deve exibir a competição do bolão"
+
+
+# ── 10. Brasileirão Série A ───────────────────────────────────────────────────
+
+class TestBrasileiraoSeedMock:
+    """Dev seed deve incluir jogos do Campeonato Brasileiro Série A 2026."""
+
+    def test_dev_seed_cria_jogos_brasileirao(self, app):
+        db = app_module.client[os.environ.get('MONGO_DB_NAME', 'dev')]
+        from application.dev_seed import populate_dev_db
+        populate_dev_db(db)
+        count = db.jogo.count_documents({'competicao': 'Campeonato Brasileiro Série A 2026'})
+        assert count > 0, \
+            f"populate_dev_db deve criar jogos do Brasileirão, encontrou {count}"
+
+    def test_nova_aposta_brasileirao_exibe_jogos_corretos(self, logged_in, app):
+        db = app_module.client[os.environ.get('MONGO_DB_NAME', 'dev')]
+        from application.dev_seed import populate_dev_db
+        populate_dev_db(db)
+
+        uid = db.usuario.find_one({'email': 'dev@local.test'})['_id']
+        db.bolao.insert_one({
+            'nome': 'Bolão Brasileirão',
+            'usuario': uid,
+            'valor': 10,
+            'premiacao': '100%',
+            'descricao': '',
+            'competicao': 'Campeonato Brasileiro Série A 2026',
+        })
+
+        r = logged_in.get('/Bolão Brasileirão/nova_aposta')
+        assert r.status_code == 200
+        # Não deve mostrar nomes de seleções da Copa do Mundo
+        html = r.data.decode('utf-8', errors='replace')
+        copa_jogos = db.jogo.count_documents({'competicao': 'Copa do Mundo 2026'})
+        brasileirao_jogos = db.jogo.count_documents({'competicao': 'Campeonato Brasileiro Série A 2026'})
+        assert brasileirao_jogos > 0, "Deve haver jogos do Brasileirão no banco"
+        # A página não deve conter jogos da Copa (filtro por competição funciona)
+        copa_jogo = db.jogo.find_one({'competicao': 'Copa do Mundo 2026'})
+        if copa_jogo:
+            assert copa_jogo['nome'].encode('utf-8') not in r.data, \
+                "Bolão do Brasileirão não deve exibir jogos da Copa do Mundo"
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

@@ -37,13 +37,15 @@ class TestInitDevDb:
         mock_pop.assert_called_once_with(db)
 
     def test_calls_seed_database_when_seed_from_api_and_key_set(self):
-        """SEED_FROM_API=true + FOOTBALL_DATA_API_KEY → real API seed."""
+        """SEED_FROM_API=true + FOOTBALL_DATA_API_KEY → real API seed (Copa + Brasileirão)."""
         db = _make_db()
         with patch.dict(os.environ,
                         {'SEED_FROM_API': 'true', 'FOOTBALL_DATA_API_KEY': 'test_key_123'}):
-            with patch('application.crawler_2026.seed_database') as mock_seed:
-                _init_dev_db(db)
-        mock_seed.assert_called_once_with(db)
+            with patch('application.crawler_2026.seed_database') as mock_copa:
+                with patch('application.crawler_brasileirao.seed_brasileirao') as mock_br:
+                    _init_dev_db(db)
+        mock_copa.assert_called_once_with(db)
+        mock_br.assert_called_once_with(db)
 
     def test_does_not_call_populate_dev_db_when_using_api_seed(self):
         """When API seed is selected, mock seed must NOT be called."""
@@ -51,6 +53,7 @@ class TestInitDevDb:
         with patch.dict(os.environ,
                         {'SEED_FROM_API': 'true', 'FOOTBALL_DATA_API_KEY': 'test_key_123'}):
             with patch('application.crawler_2026.seed_database'):
-                with patch('application.dev_seed.populate_dev_db') as mock_pop:
-                    _init_dev_db(db)
+                with patch('application.crawler_brasileirao.seed_brasileirao'):
+                    with patch('application.dev_seed.populate_dev_db') as mock_pop:
+                        _init_dev_db(db)
         mock_pop.assert_not_called()

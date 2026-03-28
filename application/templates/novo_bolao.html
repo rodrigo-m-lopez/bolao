@@ -33,6 +33,16 @@
                       placeholder="Ex.: 60% ao 1º, 30% ao 2º, 10% ao 3º" rows="3" required></textarea>
           </div>
 
+          <div class="mb-3">
+            <label for="inputCompeticao" class="form-label fw-semibold">Competição</label>
+            <select class="form-select" id="inputCompeticao" name="inputCompeticao" required>
+              <option value="" disabled selected>Selecione a competição…</option>
+              {% for comp in competicoes %}
+              <option value="{{ comp }}">{{ comp }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
           <div class="mb-4">
             <label for="inputDescricao" class="form-label fw-semibold">Descrição <span class="text-muted fw-normal">(opcional)</span></label>
             <textarea class="form-control" id="inputDescricao" name="inputDescricao"
