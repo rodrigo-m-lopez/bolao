@@ -939,10 +939,27 @@ def monta_dto_boloes():
     return dto_boloes
 
 
+def _natural_sort_key(s):
+    """Chave de ordenação natural: 'Rodada 2' < 'Rodada 10' < 'Rodada 11'."""
+    import re
+    return [int(c) if c.isdigit() else c.lower() for c in re.split(r'(\d+)', s)]
+
+
+def _grupo_tem_jogo_ativo(grupo):
+    """True se o grupo possui pelo menos um jogo não encerrado."""
+    for rodada in grupo['rodadas']:
+        for jogo in rodada['jogos']:
+            if jogo['status'] != 'encerrado':
+                return True
+    return False
+
+
 def monta_dto_grupos(competicao=None):
     """Return (grupos_list, todos_jogos_list) — always fresh from DB, no global state.
 
     Se `competicao` for informada, filtra apenas os jogos daquela competição.
+    Grupos com jogos ativos/futuros aparecem primeiro; encerrados depois,
+    ambos em ordem natural de nome (numérica quando o nome contém números).
     """
     filtro = {'competicao': competicao} if competicao else {}
     grupos_dict = {}
@@ -954,7 +971,11 @@ def monta_dto_grupos(competicao=None):
             grupos_dict[nome_grupo] = {"nome": nome_grupo, "rodadas": []}
         rodadas = grupos_dict[nome_grupo]["rodadas"]
         inclui_jogo_na_lista_rodadas(rodadas, jogo, todos_jogos_local)
-    return [grupos_dict[x] for x in sorted(grupos_dict)], todos_jogos_local
+    grupos = sorted(
+        grupos_dict.values(),
+        key=lambda g: (not _grupo_tem_jogo_ativo(g), _natural_sort_key(g['nome'])),
+    )
+    return grupos, todos_jogos_local
 
 
 class Usuario:

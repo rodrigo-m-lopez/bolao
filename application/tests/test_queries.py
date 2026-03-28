@@ -2,7 +2,7 @@
 import pytest
 from unittest.mock import patch, call
 from bson import ObjectId
-from datetime import datetime
+from datetime import datetime, timedelta
 import application.app as app_module
 from application.app import (
     monta_dto_apostas, monta_palpites, monta_pontuacoes,
@@ -102,6 +102,52 @@ class TestMontaPlacaresNoExtraQueries:
         with patch.object(app_module.tbl_jogo, 'find_one') as mock_find_one:
             monta_placares(lista, todos_jogos)
             mock_find_one.assert_not_called()
+
+
+class TestMontaDtoGruposOrdering:
+    """monta_dto_grupos deve ordenar: rodadas com jogos futuros primeiro,
+    encerradas depois em ordem numérica (não alfabética)."""
+
+    def _seed_brasileirao_rounds(self):
+        now = datetime.utcnow()
+        t1 = app_module.tbl_selecao.insert_one(
+            {'sigla': 'T01', 'nome': 'Time A', 'escudo': '', 'grupo': ''}
+        ).inserted_id
+        t2 = app_module.tbl_selecao.insert_one(
+            {'sigla': 'T02', 'nome': 'Time B', 'escudo': '', 'grupo': ''}
+        ).inserted_id
+        for rodada in range(1, 11):
+            is_past = rodada < 10
+            app_module.tbl_jogo.insert_one({
+                'nome': f'T01 x T02 R{rodada}',
+                'grupo': f'Rodada {rodada}',
+                'rodada': rodada,
+                'data': now - timedelta(days=rodada) if is_past else now + timedelta(days=1),
+                'local': '',
+                'mandante': t1,
+                'visitante': t2,
+                'gols_mandante': 1 if is_past else None,
+                'gols_visitante': 0 if is_past else None,
+                'competicao': 'Campeonato Brasileiro Série A 2026',
+            })
+
+    def test_upcoming_round_appears_first(self, flask_app):
+        """A rodada com jogo futuro deve aparecer antes das encerradas."""
+        self._seed_brasileirao_rounds()
+        with flask_app.test_request_context('/'):
+            grupos, _ = app_module.monta_dto_grupos('Campeonato Brasileiro Série A 2026')
+        assert grupos[0]['nome'] == 'Rodada 10', \
+            f"Primeiro grupo deve ser Rodada 10 (próxima), foi '{grupos[0]['nome']}'"
+
+    def test_past_rounds_sorted_numerically(self, flask_app):
+        """Rodadas encerradas devem ser ordenadas numericamente (1…9), não alfabeticamente."""
+        self._seed_brasileirao_rounds()
+        with flask_app.test_request_context('/'):
+            grupos, _ = app_module.monta_dto_grupos('Campeonato Brasileiro Série A 2026')
+        past_names = [g['nome'] for g in grupos[1:]]
+        expected = [f'Rodada {i}' for i in range(1, 10)]
+        assert past_names == expected, \
+            f"Rodadas encerradas fora de ordem. Esperado: {expected}. Obtido: {past_names}"
 
 
 class TestTotalizaPontuacaoBatch:

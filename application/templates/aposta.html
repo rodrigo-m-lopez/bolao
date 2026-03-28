@@ -53,9 +53,15 @@
             <!-- Inputs ou bloqueado -->
             {% if jogo.bloqueado %}
             <div class="d-flex align-items-center gap-1">
+              {% if jogo.status == 'encerrado' %}
+              <span class="fw-bold px-2">{{ jogo.gols_mandante }}</span>
+              <span class="vs-sep">x</span>
+              <span class="fw-bold px-2">{{ jogo.gols_visitante }}</span>
+              {% else %}
               <span class="text-muted px-2">—</span>
               <span class="vs-sep">x</span>
               <span class="text-muted px-2">—</span>
+              {% endif %}
             </div>
             {% else %}
             <div class="d-flex align-items-center gap-1">

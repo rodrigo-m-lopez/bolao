@@ -703,7 +703,44 @@ class TestSulamericanaSeedMock:
             "Formulário de novo bolão deve listar Copa Sulamericana 2026"
 
 
-# ── 13. Status das partidas ───────────────────────────────────────────────────
+# ── 13. Nova aposta exibe placar de jogos encerrados ─────────────────────────
+
+class TestNovaApostaExibeResultados:
+    """Em nova_aposta, jogos encerrados devem exibir o placar real, não '—'."""
+
+    def test_jogo_encerrado_exibe_placar(self, logged_in, app):
+        db = app_module.client[os.environ.get('MONGO_DB_NAME', 'dev')]
+        from application.dev_seed import populate_dev_db
+        populate_dev_db(db)
+
+        uid = db.usuario.find_one({'email': 'dev@local.test'})['_id']
+        db.bolao.insert_one({
+            'nome': 'Bolão Placar',
+            'usuario': uid,
+            'valor': 10,
+            'premiacao': '100%',
+            'descricao': '',
+            'competicao': 'Copa do Mundo 2026',
+        })
+
+        r = logged_in.get('/Bolão Placar/nova_aposta')
+        assert r.status_code == 200
+        html = r.data.decode('utf-8')
+
+        # BRA x ARG (encerrado, 2x1) — o placar deve aparecer, não "—"
+        # O DTO tem gols_mandante=2 e gols_visitante=1; o template deve renderizá-los
+        encerrado = db.jogo.find_one({'nome': 'BRA x ARG'})
+        assert encerrado is not None
+        gm = str(encerrado['gols_mandante'])  # "2"
+        gv = str(encerrado['gols_visitante'])  # "1"
+
+        # Verifica que os valores do placar aparecem na página
+        # (basta que o número exista — assertion mais forte do que só checar status badge)
+        assert f'>{gm}<' in html or f'>{gm} ' in html or f' {gm}<' in html, \
+            f"Placar mandante '{gm}' deve aparecer no HTML de nova_aposta"
+
+
+# ── 14. Status das partidas ───────────────────────────────────────────────────
 
 class TestStatusPartidas:
     """Badge e status das partidas: em andamento, encerrado, tbd."""
