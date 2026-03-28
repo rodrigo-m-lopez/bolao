@@ -74,8 +74,19 @@ def _init_dev_db(db):
     if os.environ.get('SEED_FROM_API') == 'true' and os.environ.get('FOOTBALL_DATA_API_KEY'):
         from application.crawler_2026 import seed_database
         from application.crawler_brasileirao import seed_brasileirao
-        seed_database(db)
-        seed_brasileirao(db)
+        from application.crawler_libertadores import seed_libertadores
+        from application.crawler_copa_brasil import seed_copa_brasil
+        _crawlers = [
+            ('Copa do Mundo 2026',              seed_database),
+            ('Campeonato Brasileiro Série A 2026', seed_brasileirao),
+            ('Copa Libertadores 2026',          seed_libertadores),
+            ('Copa do Brasil 2026',             seed_copa_brasil),
+        ]
+        for nome_comp, fn in _crawlers:
+            try:
+                fn(db)
+            except Exception as exc:
+                logger.warning('Seed de "%s" falhou (ignorando): %s', nome_comp, exc)
     else:
         from application.dev_seed import populate_dev_db
         populate_dev_db(db)
@@ -868,6 +879,17 @@ def monta_dto_jogo(jogo):
         (mandante and mandante.get('sigla') == '???') or
         (visitante and visitante.get('sigla') == '???')
     )
+    iniciou = jogo_ja_iniciou(jogo["data"])
+    tem_resultado = jogo["gols_mandante"] is not None and jogo["gols_visitante"] is not None
+    if tbd:
+        status = 'tbd'
+    elif not iniciou:
+        status = 'aberto'
+    elif tem_resultado:
+        status = 'encerrado'
+    else:
+        status = 'em_andamento'
+
     return {"_id": jogo["_id"],
             "nome": jogo["nome"],
             "gols_mandante": '-' if jogo["gols_mandante"] is None else jogo["gols_mandante"],
@@ -883,7 +905,8 @@ def monta_dto_jogo(jogo):
             "date_time": jogo["data"],
             "local": jogo["local"],
             "tbd": tbd,
-            "bloqueado": tbd or jogo_ja_iniciou(jogo["data"])}
+            "status": status,
+            "bloqueado": tbd or iniciou}
 
 
 def inclui_jogo_na_lista_rodadas(lista_rodadas, jogo, todos_jogos):

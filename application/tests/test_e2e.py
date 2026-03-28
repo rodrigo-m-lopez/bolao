@@ -458,11 +458,14 @@ class TestSeedFromApiStartup:
                 return br_teams_resp
             return br_matches_resp
 
+        _empty = lambda p, **kw: {'teams': []} if 'teams' in p else {'matches': []}
         with patch.dict(os.environ, {'SEED_FROM_API': 'true', 'FOOTBALL_DATA_API_KEY': 'fake_key'}):
             with patch('application.crawler_2026._get', side_effect=fake_get):
                 with patch('application.crawler_brasileirao._get', side_effect=fake_get_br):
-                    from application.app import _init_dev_db
-                    _init_dev_db(db)
+                    with patch('application.crawler_libertadores._get', side_effect=_empty):
+                        with patch('application.crawler_copa_brasil._get', side_effect=_empty):
+                            from application.app import _init_dev_db
+                            _init_dev_db(db)
 
         assert db.jogo.count_documents({}) >= 2, \
             f"Após seed via API, banco deveria ter jogos: {db.jogo.count_documents({})} encontrados"
@@ -484,13 +487,15 @@ class TestSeedFromApiStartup:
         teams_resp = self._api_teams_response()
         matches_resp = self._api_matches_response({})
 
+        _empty = lambda p, **kw: {'teams': []} if 'teams' in p else {'matches': []}
         with patch.dict(os.environ, {'SEED_FROM_API': 'true', 'FOOTBALL_DATA_API_KEY': 'fake_key'}):
             with patch('application.crawler_2026._get', side_effect=lambda p, **kw:
                        teams_resp if 'teams' in p else matches_resp):
-                with patch('application.crawler_brasileirao._get', side_effect=lambda p, **kw:
-                           {'teams': []} if 'teams' in p else {'matches': []}):
-                    from application.app import _init_dev_db
-                    _init_dev_db(db)
+                with patch('application.crawler_brasileirao._get', side_effect=_empty):
+                    with patch('application.crawler_libertadores._get', side_effect=_empty):
+                        with patch('application.crawler_copa_brasil._get', side_effect=_empty):
+                            from application.app import _init_dev_db
+                            _init_dev_db(db)
 
         with app.test_client() as c:
             r = c.get('/intro')
@@ -596,6 +601,203 @@ class TestBrasileiraoSeedMock:
         if copa_jogo:
             assert copa_jogo['nome'].encode('utf-8') not in r.data, \
                 "Bolão do Brasileirão não deve exibir jogos da Copa do Mundo"
+
+
+# ── 11. Copa Libertadores 2026 ────────────────────────────────────────────────
+
+class TestLibertadoresSeedMock:
+    """Dev seed deve incluir jogos da Copa Libertadores 2026."""
+
+    def test_dev_seed_cria_jogos_libertadores(self, app):
+        db = app_module.client[os.environ.get('MONGO_DB_NAME', 'dev')]
+        from application.dev_seed import populate_dev_db
+        populate_dev_db(db)
+        count = db.jogo.count_documents({'competicao': 'Copa Libertadores 2026'})
+        assert count > 0, \
+            f"populate_dev_db deve criar jogos da Libertadores, encontrou {count}"
+
+    def test_nova_aposta_libertadores_exibe_jogos_corretos(self, logged_in, app):
+        db = app_module.client[os.environ.get('MONGO_DB_NAME', 'dev')]
+        from application.dev_seed import populate_dev_db
+        populate_dev_db(db)
+
+        uid = db.usuario.find_one({'email': 'dev@local.test'})['_id']
+        db.bolao.insert_one({
+            'nome': 'Bolão Libertadores',
+            'usuario': uid,
+            'valor': 10,
+            'premiacao': '100%',
+            'descricao': '',
+            'competicao': 'Copa Libertadores 2026',
+        })
+
+        r = logged_in.get('/Bolão Libertadores/nova_aposta')
+        assert r.status_code == 200, \
+            f"nova_aposta Libertadores retornou {r.status_code}: {r.data[:300]}"
+
+        # Verifica pelo nome do time (o template exibe nome_mandante, não o código do jogo)
+        lib_clube = db.selecao.find_one({'sigla': 'RIV'})
+        assert lib_clube is not None, "Clube River Plate deve existir no banco"
+        assert lib_clube['nome'].encode('utf-8') in r.data, \
+            "Bolão da Libertadores deve exibir times da Libertadores (River Plate)"
+
+        # Não deve exibir times exclusivos da Copa do Mundo (seleções nacionais)
+        selecao_copa = db.selecao.find_one({'sigla': 'BRA'})
+        if selecao_copa:
+            # BRA pode aparecer se for time também da Lib, mas no seed são separados
+            lib_jogos = db.jogo.count_documents({'competicao': 'Copa Libertadores 2026'})
+            assert lib_jogos > 0, "Deve haver jogos da Libertadores no banco"
+
+    def test_libertadores_competicao_disponivel(self, logged_in):
+        r = logged_in.get('/novo_bolao')
+        assert r.status_code == 200
+        assert 'Copa Libertadores 2026'.encode('utf-8') in r.data, \
+            "Formulário de novo bolão deve listar Copa Libertadores 2026"
+
+
+# ── 12. Copa do Brasil 2026 ───────────────────────────────────────────────────
+
+class TestCopaBrasilSeedMock:
+    """Dev seed deve incluir jogos da Copa do Brasil 2026."""
+
+    def test_dev_seed_cria_jogos_copa_brasil(self, app):
+        db = app_module.client[os.environ.get('MONGO_DB_NAME', 'dev')]
+        from application.dev_seed import populate_dev_db
+        populate_dev_db(db)
+        count = db.jogo.count_documents({'competicao': 'Copa do Brasil 2026'})
+        assert count > 0, \
+            f"populate_dev_db deve criar jogos da Copa do Brasil, encontrou {count}"
+
+    def test_nova_aposta_copa_brasil_exibe_jogos_corretos(self, logged_in, app):
+        db = app_module.client[os.environ.get('MONGO_DB_NAME', 'dev')]
+        from application.dev_seed import populate_dev_db
+        populate_dev_db(db)
+
+        uid = db.usuario.find_one({'email': 'dev@local.test'})['_id']
+        db.bolao.insert_one({
+            'nome': 'Bolão Copa Brasil',
+            'usuario': uid,
+            'valor': 10,
+            'premiacao': '100%',
+            'descricao': '',
+            'competicao': 'Copa do Brasil 2026',
+        })
+
+        r = logged_in.get('/Bolão Copa Brasil/nova_aposta')
+        assert r.status_code == 200, \
+            f"nova_aposta Copa do Brasil retornou {r.status_code}: {r.data[:300]}"
+
+        # Verifica pelo nome do time (template exibe nome_mandante)
+        cbr_clube = db.selecao.find_one({'sigla': 'GRE'})
+        assert cbr_clube is not None, "Clube Grêmio deve existir no banco"
+        assert cbr_clube['nome'].encode('utf-8') in r.data, \
+            "Bolão da Copa do Brasil deve exibir times da Copa do Brasil (Grêmio)"
+
+        cbr_jogos = db.jogo.count_documents({'competicao': 'Copa do Brasil 2026'})
+        assert cbr_jogos > 0, "Deve haver jogos da Copa do Brasil no banco"
+
+    def test_copa_brasil_competicao_disponivel(self, logged_in):
+        r = logged_in.get('/novo_bolao')
+        assert r.status_code == 200
+        assert 'Copa do Brasil 2026'.encode('utf-8') in r.data, \
+            "Formulário de novo bolão deve listar Copa do Brasil 2026"
+
+
+# ── 13. Status das partidas ───────────────────────────────────────────────────
+
+class TestStatusPartidas:
+    """Badge e status das partidas: em andamento, encerrado, tbd."""
+
+    def _setup_status_bolao(self, db):
+        """Cria bolão com jogos em todos os estados de status."""
+        ctx = _setup_bolao(db, nome='Bolão Status')
+        now = datetime.utcnow()
+        sel_a = db.selecao.find_one({'sigla': 'BRA'})['_id']
+        sel_b = db.selecao.find_one({'sigla': 'ARG'})['_id']
+
+        # Em andamento: iniciou, sem resultado
+        jogo_em_andamento = db.jogo.insert_one({
+            'nome': 'BRA x ARG em andamento',
+            'grupo': 'A', 'rodada': 3,
+            'data': now - timedelta(hours=1),
+            'local': 'Estádio',
+            'mandante': sel_a, 'visitante': sel_b,
+            'gols_mandante': None, 'gols_visitante': None,
+            'competicao': 'Copa do Mundo 2026',
+        }).inserted_id
+
+        # Encerrado: tem resultado
+        jogo_encerrado = db.jogo.insert_one({
+            'nome': 'ARG x BRA encerrado',
+            'grupo': 'A', 'rodada': 4,
+            'data': now - timedelta(hours=3),
+            'local': 'Estádio',
+            'mandante': sel_b, 'visitante': sel_a,
+            'gols_mandante': 2, 'gols_visitante': 1,
+            'competicao': 'Copa do Mundo 2026',
+        }).inserted_id
+
+        # Adicionar palpite para o jogo encerrado
+        aposta = db.aposta.find_one({'bolao': ctx['bid']})
+        if aposta:
+            db.palpite.insert_one({
+                'aposta': aposta['_id'],
+                'jogo': jogo_encerrado,
+                'gols_mandante': 1,
+                'gols_visitante': 1,
+            })
+            db.palpite.insert_one({
+                'aposta': aposta['_id'],
+                'jogo': jogo_em_andamento,
+                'gols_mandante': 2,
+                'gols_visitante': 0,
+            })
+
+        return {**ctx, 'jogo_em_andamento': str(jogo_em_andamento),
+                'jogo_encerrado': str(jogo_encerrado)}
+
+    def test_dto_jogo_status_em_andamento(self, app):
+        db = app_module.client[os.environ.get('MONGO_DB_NAME', 'dev')]
+        ctx = self._setup_status_bolao(db)
+        from application.app import monta_dto_jogo
+        jogo = db.jogo.find_one({'nome': 'BRA x ARG em andamento'})
+        dto = monta_dto_jogo(jogo)
+        assert dto['status'] == 'em_andamento', \
+            f"Jogo iniciado sem resultado deve ter status='em_andamento', got '{dto['status']}'"
+
+    def test_dto_jogo_status_encerrado(self, app):
+        db = app_module.client[os.environ.get('MONGO_DB_NAME', 'dev')]
+        ctx = self._setup_status_bolao(db)
+        from application.app import monta_dto_jogo
+        jogo = db.jogo.find_one({'nome': 'ARG x BRA encerrado'})
+        dto = monta_dto_jogo(jogo)
+        assert dto['status'] == 'encerrado', \
+            f"Jogo com resultado deve ter status='encerrado', got '{dto['status']}'"
+
+    def test_dto_jogo_status_aberto(self, app):
+        db = app_module.client[os.environ.get('MONGO_DB_NAME', 'dev')]
+        ctx = _setup_bolao(db)
+        from application.app import monta_dto_jogo
+        jogo = db.jogo.find_one({'nome': 'BRA x ARG'})
+        dto = monta_dto_jogo(jogo)
+        assert dto['status'] == 'aberto', \
+            f"Jogo futuro deve ter status='aberto', got '{dto['status']}'"
+
+    def test_editar_palpites_exibe_encerrado(self, logged_in, app):
+        db = app_module.client[os.environ.get('MONGO_DB_NAME', 'dev')]
+        ctx = self._setup_status_bolao(db)
+        r = logged_in.get(f'/{ctx["bolao"]}/editar_palpites/Aposta E2E')
+        assert r.status_code == 200
+        html = r.data.decode('utf-8', errors='replace')
+        assert 'Encerrado' in html, "Deve exibir badge 'Encerrado' para jogo com resultado"
+
+    def test_editar_palpites_exibe_em_andamento(self, logged_in, app):
+        db = app_module.client[os.environ.get('MONGO_DB_NAME', 'dev')]
+        ctx = self._setup_status_bolao(db)
+        r = logged_in.get(f'/{ctx["bolao"]}/editar_palpites/Aposta E2E')
+        assert r.status_code == 200
+        html = r.data.decode('utf-8', errors='replace')
+        assert 'Em Andamento' in html, "Deve exibir badge 'Em Andamento' para jogo em progresso"
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

@@ -20,18 +20,26 @@ fluxo de /dev_login também funcione sem conflito.
 from datetime import datetime, timedelta
 import logging
 
+from application.constants import (
+    PONTUACAO_PLACAR_EXATO,
+    PONTUACAO_VENCEDOR_OU_EMPATE,
+    PONTUACAO_GOLS_DE_UM_TIME,
+)
+
 logger = logging.getLogger(__name__)
 
 _JOGOS = [
     # (nome,         grupo, rodada, delta_tempo,            gm,   gv,   mandante, visitante)
-    # ── Bloqueados (passado) ──────────────────────────────────────────────────
-    ('BRA x ARG',   'A',   1,   timedelta(days=-3),      2,    1,    'BRA', 'ARG'),  # COM resultado
-    ('FRA x GER',   'B',   1,   timedelta(days=-1),      None, None, 'FRA', 'GER'),  # SEM resultado
-    ('ARG x BRA',   'A',   2,   timedelta(minutes=-30),  None, None, 'ARG', 'BRA'),  # recém bloqueado
+    # ── Encerrados (passado COM resultado) ────────────────────────────────────
+    ('BRA x ARG',   'A',   1,   timedelta(days=-3),      2,    1,    'BRA', 'ARG'),  # encerrado, placar exato errado
+    ('FRA x GER',   'B',   1,   timedelta(days=-2),      1,    0,    'FRA', 'GER'),  # encerrado, acertou vencedor
+    # ── Em andamento (passado SEM resultado) ──────────────────────────────────
+    ('ARG x BRA',   'A',   2,   timedelta(minutes=-45),  None, None, 'ARG', 'BRA'),  # em andamento com palpite
+    ('GER x FRA',   'B',   2,   timedelta(minutes=-10),  None, None, 'GER', 'FRA'),  # em andamento sem palpite
     # ── Desbloqueados (futuro) ────────────────────────────────────────────────
     ('BRA x FRA',   'A',   3,   timedelta(hours=2),      None, None, 'BRA', 'FRA'),  # quase começando
-    ('GER x BRA',   'B',   2,   timedelta(days=3),       None, None, 'GER', 'BRA'),  # próximos dias
-    ('ARG x FRA',   'B',   3,   timedelta(days=6),       None, None, 'ARG', 'FRA'),  # semana que vem
+    ('GER x BRA',   'B',   3,   timedelta(days=3),       None, None, 'GER', 'BRA'),  # próximos dias
+    ('ARG x FRA',   'C',   1,   timedelta(days=6),       None, None, 'ARG', 'FRA'),  # semana que vem
 ]
 
 _SELECOES = [
@@ -39,6 +47,22 @@ _SELECOES = [
     {'nome': 'Argentina', 'sigla': 'ARG', 'escudo': '', 'grupo': 'A'},
     {'nome': 'França',    'sigla': 'FRA', 'escudo': '', 'grupo': 'B'},
     {'nome': 'Alemanha',  'sigla': 'GER', 'escudo': '', 'grupo': 'B'},
+]
+
+# Clubes mock da Libertadores (siglas únicas)
+_CLUBES_LIB = [
+    {'nome': 'River Plate',  'sigla': 'RIV', 'escudo': '', 'grupo': ''},
+    {'nome': 'Boca Juniors', 'sigla': 'BOC', 'escudo': '', 'grupo': ''},
+    {'nome': 'Nacional',     'sigla': 'NAC', 'escudo': '', 'grupo': ''},
+    {'nome': 'Peñarol',      'sigla': 'PEN', 'escudo': '', 'grupo': ''},
+]
+
+# (nome, grupo, rodada, delta, gm, gv, mandante_sigla, visitante_sigla)
+_JOGOS_LIB = [
+    ('RIV x BOC', 'Grupo A', 1, timedelta(days=-1),  2,    0,    'RIV', 'BOC'),
+    ('NAC x PEN', 'Grupo B', 1, timedelta(hours=2),  None, None, 'NAC', 'PEN'),
+    ('BOC x RIV', 'Grupo A', 2, timedelta(days=5),   None, None, 'BOC', 'RIV'),
+    ('PEN x NAC', 'Grupo B', 2, timedelta(days=6),   None, None, 'PEN', 'NAC'),
 ]
 
 # Clubes mock do Brasileirão (siglas únicas, sem conflito com seleções)
@@ -59,6 +83,22 @@ _JOGOS_BR = [
     ('PAL x SAO', 2, timedelta(days=4),   None, None, 'PAL', 'SAO'),
     ('COR x FLA', 2, timedelta(days=5),   None, None, 'COR', 'FLA'),
     ('CAM x FLU', 2, timedelta(days=6),   None, None, 'CAM', 'FLU'),
+]
+
+# Clubes mock da Copa do Brasil (siglas únicas, sem conflito)
+_CLUBES_CBR = [
+    {'nome': 'Grêmio',        'sigla': 'GRE', 'escudo': '', 'grupo': ''},
+    {'nome': 'Internacional',  'sigla': 'INT', 'escudo': '', 'grupo': ''},
+    {'nome': 'Santos',         'sigla': 'SAN', 'escudo': '', 'grupo': ''},
+    {'nome': 'Cruzeiro',       'sigla': 'CRU', 'escudo': '', 'grupo': ''},
+]
+
+# (nome, rodada, delta, gm, gv, mandante_sigla, visitante_sigla)
+_JOGOS_CBR = [
+    ('GRE x INT', 1, timedelta(days=-1),  1,    0,    'GRE', 'INT'),
+    ('SAN x CRU', 1, timedelta(hours=4),  None, None, 'SAN', 'CRU'),
+    ('INT x GRE', 2, timedelta(days=7),   None, None, 'INT', 'GRE'),
+    ('CRU x SAN', 2, timedelta(days=8),   None, None, 'CRU', 'SAN'),
 ]
 
 
@@ -94,9 +134,26 @@ def populate_dev_db(db):
 
     todos_jids = list(jogo_ids.values())
 
+    # ── Jogos da Libertadores ─────────────────────────────────────────────────
+    db.selecao.insert_many(_CLUBES_LIB)
+    sel_lib = {s['sigla']: s['_id'] for s in db.selecao.find({'sigla': {'$in': ['RIV', 'BOC', 'NAC', 'PEN']}})}
+    for nome, grupo, rodada, delta, gm, gv, m_sigla, v_sigla in _JOGOS_LIB:
+        db.jogo.insert_one({
+            'nome': nome,
+            'grupo': grupo,
+            'rodada': rodada,
+            'data': now + delta,
+            'local': 'Estádio Dev',
+            'mandante': sel_lib[m_sigla],
+            'visitante': sel_lib[v_sigla],
+            'gols_mandante': gm,
+            'gols_visitante': gv,
+            'competicao': 'Copa Libertadores 2026',
+        })
+
     # ── Jogos do Brasileirão ──────────────────────────────────────────────────
     db.selecao.insert_many(_CLUBES_BR)
-    sel_br = {s['sigla']: s['_id'] for s in db.selecao.find({'grupo': ''})}
+    sel_br = {s['sigla']: s['_id'] for s in db.selecao.find({'sigla': {'$in': ['FLA', 'PAL', 'SAO', 'COR', 'FLU', 'CAM']}})}
     for nome, rodada, delta, gm, gv, m_sigla, v_sigla in _JOGOS_BR:
         db.jogo.insert_one({
             'nome': nome,
@@ -109,6 +166,23 @@ def populate_dev_db(db):
             'gols_mandante': gm,
             'gols_visitante': gv,
             'competicao': 'Campeonato Brasileiro Série A 2026',
+        })
+
+    # ── Jogos da Copa do Brasil ───────────────────────────────────────────────
+    db.selecao.insert_many(_CLUBES_CBR)
+    sel_cbr = {s['sigla']: s['_id'] for s in db.selecao.find({'sigla': {'$in': ['GRE', 'INT', 'SAN', 'CRU']}})}
+    for nome, rodada, delta, gm, gv, m_sigla, v_sigla in _JOGOS_CBR:
+        db.jogo.insert_one({
+            'nome': nome,
+            'grupo': f'Rodada {rodada}',
+            'rodada': rodada,
+            'data': now + delta,
+            'local': 'Estádio Dev',
+            'mandante': sel_cbr[m_sigla],
+            'visitante': sel_cbr[v_sigla],
+            'gols_mandante': gm,
+            'gols_visitante': gv,
+            'competicao': 'Copa do Brasil 2026',
         })
 
     # ── Usuário dev ───────────────────────────────────────────────────────────
@@ -137,16 +211,30 @@ def populate_dev_db(db):
     }).inserted_id
 
     # ── Helper ────────────────────────────────────────────────────────────────
-    def cria_aposta(nome_aposta, palpites):
+    def _pontos(real_m, real_v, palp_m, palp_v):
+        """Calcula pontuação de um palpite dado o resultado real."""
+        if real_m is None or real_v is None:
+            return 0, 0, 0, 0
+        if real_m == palp_m and real_v == palp_v:
+            return PONTUACAO_PLACAR_EXATO, 1, 0, 0
+        resultado_real = (real_m > real_v) - (real_m < real_v)
+        resultado_palp = (palp_m > palp_v) - (palp_m < palp_v)
+        acertou_result = int(resultado_real == resultado_palp)
+        acertou_gols   = int(real_m == palp_m or real_v == palp_v)
+        pts = acertou_result * PONTUACAO_VENCEDOR_OU_EMPATE + acertou_gols * PONTUACAO_GOLS_DE_UM_TIME
+        return pts, 0, acertou_result, acertou_gols
+
+    def cria_aposta(nome_aposta, palpites_dict):
         """
-        palpites: dict {nome_jogo: (gols_mandante, gols_visitante)}
+        palpites_dict: dict {nome_jogo: (gols_mandante, gols_visitante)}
+        Calcula pontuação real para partidas já encerradas.
         """
         aid = db.aposta.insert_one({
             'nome': nome_aposta, 'usuario': uid,
-            'bolao': bid, 'pago': False,
+            'bolao': bid, 'pago': True,
         }).inserted_id
 
-        # pontuacao zerada para todos os jogos (padrão do sistema)
+        # pontuacao inicial — será atualizada abaixo para jogos encerrados
         for jid in todos_jids:
             db.pontuacao.insert_one({
                 'aposta': aid, 'jogo': jid,
@@ -154,38 +242,54 @@ def populate_dev_db(db):
                 'vencedor_ou_empate': 0, 'gols_de_um_time': 0,
             })
 
-        # palpites somente onde fornecido
-        for nome_jogo, (gm, gv) in palpites.items():
+        # palpites e cálculo de pontos para jogos com resultado
+        for nome_jogo, (gm, gv) in palpites_dict.items():
+            jid = jogo_ids[nome_jogo]
             db.palpite.insert_one({
-                'aposta': aid,
-                'jogo': jogo_ids[nome_jogo],
-                'gols_mandante': gm,
-                'gols_visitante': gv,
+                'aposta': aid, 'jogo': jid,
+                'gols_mandante': gm, 'gols_visitante': gv,
             })
+            jogo_doc = db.jogo.find_one({'_id': jid})
+            real_m = jogo_doc.get('gols_mandante')
+            real_v = jogo_doc.get('gols_visitante')
+            if real_m is not None and real_v is not None:
+                pts, exato, result, gols = _pontos(real_m, real_v, gm, gv)
+                db.pontuacao.update_one(
+                    {'aposta': aid, 'jogo': jid},
+                    {'$set': {'pontos': pts, 'placar_exato': exato,
+                              'vencedor_ou_empate': result, 'gols_de_um_time': gols}},
+                )
 
-        logger.info('  Aposta "%s" criada (%d palpites)', nome_aposta, len(palpites))
+        logger.info('  Aposta "%s" criada (%d palpites)', nome_aposta, len(palpites_dict))
         return aid
 
     # ── Apostas ───────────────────────────────────────────────────────────────
     #
-    # Cenários cobertos por jogo para cada aposta:
-    #   BRA x ARG   FRA x GER  ARG x BRA   BRA x FRA   GER x BRA   ARG x FRA
-    #   (A: bloq+p) (A: bloq+p)(A: bloq+p) (C: lib+p)  (C: lib+p)  (D: lib/-)
+    # Estados possíveis por partida:
+    #   encerrado+p  = jogo encerrado (tem resultado), com palpite
+    #   encerrado/-  = jogo encerrado, sem palpite
+    #   andamento+p  = jogo em andamento (sem resultado), com palpite
+    #   andamento/-  = jogo em andamento, sem palpite
+    #   aberto+p     = jogo futuro, palpite preenchido
+    #   aberto/-     = jogo futuro, sem palpite
+    #
+    #   BRA x ARG    FRA x GER    ARG x BRA    GER x FRA    BRA x FRA    GER x BRA    ARG x FRA
+    #   enc (2x1)    enc (1x0)    andamento    andamento    aberto       aberto       aberto
     cria_aposta('Apostador Completo', {
-        'BRA x ARG': (1, 1),   # estado A — bloqueado, palpite errou o placar
-        'FRA x GER': (2, 0),   # estado A — bloqueado, sem resultado ainda
-        'ARG x BRA': (0, 1),   # estado A — recém bloqueado, com palpite
-        'BRA x FRA': (2, 1),   # estado C — liberado, palpite preenchido
-        'GER x BRA': (0, 2),   # estado C — liberado, palpite preenchido
-        #                        estado D — ARG x FRA sem palpite (campo vazio)
+        'BRA x ARG': (1, 1),   # encerrado+p — apostou 1x1, real foi 2x1 (errou placar, acertou nada)
+        'FRA x GER': (1, 0),   # encerrado+p — apostou 1x0, real foi 1x0 (placar exato!)
+        'ARG x BRA': (2, 0),   # andamento+p — apostou 2x0, jogo em andamento
+        # GER x FRA sem palpite → andamento/-
+        'BRA x FRA': (2, 1),   # aberto+p    — palpite preenchido, jogo futuro
+        'GER x BRA': (0, 2),   # aberto+p    — palpite preenchido, jogo futuro
+        #                         ARG x FRA   — aberto/- (campo vazio)
     })
 
-    #   BRA x ARG   FRA x GER  ARG x BRA   BRA x FRA   GER x BRA   ARG x FRA
-    #   (B: bloq/-) (B: bloq/-)(B: bloq/-)  (C: lib+p)  (D: lib/-)  (D: lib/-)
+    #   BRA x ARG    FRA x GER    ARG x BRA    GER x FRA    BRA x FRA    GER x BRA    ARG x FRA
+    #   enc/-        enc/-        andamento/-  andamento/-  aberto+p     aberto/-     aberto/-
     cria_aposta('Apostador Parcial', {
-        # jogos passados omitidos → estado B (perdeu o prazo)
-        'BRA x FRA': (1, 1),   # estado C — liberado, palpite preenchido
-        #                        estado D — GER x BRA e ARG x FRA sem palpite
+        # Jogos encerrados e em andamento sem palpite → perdeu o prazo
+        'BRA x FRA': (1, 1),   # aberto+p — apenas um jogo futuro apostado
     })
 
     #   Todos bloqueados → estado B  |  Todos futuros → estado D
@@ -193,8 +297,9 @@ def populate_dev_db(db):
         # sem nenhum palpite: demonstra aposta recém-criada
     })
 
+    n_jogos = db.jogo.count_documents({})
     logger.info(
         'DEV_MOCK_AUTH: banco populado — '
-        '4 seleções, 6 jogos (3 bloqueados / 3 liberados), '
-        '1 bolão ("Bolão Dev"), 3 apostas.'
+        '%d jogos (Copa do Mundo + Libertadores + Brasileirão + Copa do Brasil), '
+        '1 bolão ("Bolão Dev"), 3 apostas.', n_jogos
     )
