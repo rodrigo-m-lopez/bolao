@@ -45,16 +45,22 @@
               <!-- Placar -->
               <div class="placar-area d-flex align-items-center gap-1">
                 {% if jogo.bloqueado %}
-                  {% if p %}
+                  {% if jogo.tbd %}
+                    <span class="text-muted">—</span>
+                    <span class="vs-sep">x</span>
+                    <span class="text-muted">—</span>
+                    <span class="badge-bloqueado ms-1" style="background:#6f42c1">a definir</span>
+                  {% elif p %}
                     <span class="fw-bold">{{ p.gols_mandante }}</span>
                     <span class="vs-sep">x</span>
                     <span class="fw-bold">{{ p.gols_visitante }}</span>
+                    <span class="badge-bloqueado ms-1">bloqueado</span>
                   {% else %}
                     <span class="text-muted">—</span>
                     <span class="vs-sep">x</span>
                     <span class="text-muted">—</span>
+                    <span class="badge-bloqueado ms-1">bloqueado</span>
                   {% endif %}
-                  <span class="badge-bloqueado ms-1">bloqueado</span>
                 {% else %}
                   <input type="number" min="0" class="form-control score-input"
                          id="m-{{ jid }}" value="{{ p.gols_mandante if p else '' }}" placeholder="–">

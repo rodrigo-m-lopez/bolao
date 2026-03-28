@@ -52,7 +52,11 @@
               <span class="text-muted px-2">—</span>
               <span class="vs-sep">x</span>
               <span class="text-muted px-2">—</span>
+              {% if jogo.tbd %}
+              <span class="badge-bloqueado" style="background:#6f42c1">a definir</span>
+              {% else %}
               <span class="badge-bloqueado">bloqueado</span>
+              {% endif %}
             </div>
             {% else %}
             <div class="d-flex align-items-center gap-1">

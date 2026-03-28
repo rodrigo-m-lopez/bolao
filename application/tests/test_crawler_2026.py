@@ -76,33 +76,39 @@ class TestUpsertJogoNullFields:
         crawler._upsert_jogo(db, match)
         assert db.jogo.count_documents({'nome': 'GER x FRA'}) == 1
 
-    def test_both_null_tla_and_null_short_falls_back_to_unknown(self):
-        """When both tla and shortName are None the jogo is skipped (no crash)."""
+    def test_both_tbd_teams_inserts_jogo_with_placeholder(self):
+        """Both teams TBD → jogo is inserted using the ??? placeholder selecao."""
         db = _make_db()
         match = _make_match(
             home_tla=None, home_short=None,
             away_tla=None, away_short=None,
         )
-        # No selecoes inserted — after the fix the function should log a warning
-        # and return without inserting anything.
         crawler._upsert_jogo(db, match)
-        assert db.jogo.count_documents({}) == 0
+        assert db.jogo.count_documents({}) == 1, \
+            "Jogo com ambos os times TBD deve ser inserido com placeholder"
+        assert db.selecao.count_documents({'sigla': '???'}) == 1, \
+            "Selecao placeholder ??? deve ser criada"
 
-    def test_null_home_tla_null_short_with_away_valid(self):
-        """Home team with both null, away team valid → skipped gracefully."""
+    def test_confirmed_vs_tbd_inserts_jogo_with_placeholder(self):
+        """Confirmed team vs TBD slot → jogo is inserted; TBD side uses ??? placeholder."""
         db = _make_db()
         match = _make_match(
-            home_tla=None, home_short=None,
-            away_tla='ARG', away_short='Argentina',
+            home_tla='KOR', home_short='Korea Republic',
+            away_tla=None,  away_short=None, away_name=None,
         )
-        _insert_selecoes(db, 'ARG')
+        _insert_selecoes(db, 'KOR')
         crawler._upsert_jogo(db, match)
-        assert db.jogo.count_documents({}) == 0
+        assert db.jogo.count_documents({}) == 1, \
+            "Jogo KOR vs TBD deve ser inserido"
+        jogo = db.jogo.find_one({})
+        tbd_sel = db.selecao.find_one({'sigla': '???'})
+        assert tbd_sel is not None, "Selecao placeholder ??? deve ser criada"
+        assert jogo['visitante'] == tbd_sel['_id'], \
+            "O visitante TBD deve referenciar a selecao placeholder"
 
     def test_all_three_fields_null_does_not_crash(self):
         """tla=None, shortName=None, name=None (all keys present with null value) → no crash."""
         db = _make_db()
-        # Simulate the real API response where every name field is null
         match = _make_match(
             home_tla=None, home_short=None, home_name=None,
             away_tla=None, away_short=None, away_name=None,
@@ -112,18 +118,17 @@ class TestUpsertJogoNullFields:
         except TypeError as exc:
             pytest.fail(f"_upsert_jogo crashed when all name fields are null: {exc}")
 
-    def test_confirmed_vs_tbd_team_is_skipped_gracefully(self):
-        """Real-world pattern: confirmed team (e.g. KOR) vs TBD slot (all null) → skip, no crash."""
+    def test_tbd_placeholder_reutilizado_em_multiplos_jogos(self):
+        """Múltiplos jogos TBD compartilham a mesma selecao placeholder ???."""
         db = _make_db()
-        # KOR is confirmed; the away slot is TBD (all name fields null in the API)
-        match = _make_match(
-            home_tla='KOR', home_short='Korea Republic',
-            away_tla=None,  away_short=None, away_name=None,
-        )
-        _insert_selecoes(db, 'KOR')
-        crawler._upsert_jogo(db, match)
-        # Jogo must NOT be inserted since the away selecao doesn't exist
-        assert db.jogo.count_documents({}) == 0
+        _insert_selecoes(db, 'BRA', 'ARG')
+        m1 = _make_match('BRA', 'Brazil', None, None, away_name=None)
+        m2 = _make_match(None, None, 'ARG', 'Argentina', home_name=None)
+        crawler._upsert_jogo(db, m1)
+        crawler._upsert_jogo(db, m2)
+        assert db.jogo.count_documents({}) == 2
+        assert db.selecao.count_documents({'sigla': '???'}) == 1, \
+            "Deve existir apenas UM documento placeholder ???"
 
 
 class TestSeedSelecoes:

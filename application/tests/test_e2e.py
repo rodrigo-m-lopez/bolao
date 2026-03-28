@@ -325,6 +325,65 @@ class TestAdmin:
 
 # ── 7. Startup com SEED_FROM_API ──────────────────────────────────────────────
 
+class TestJogoTBD:
+    """Jogos com time A Definir (???) devem aparecer no grupo mas sem inputs habilitados."""
+
+    def _setup_tbd_bolao(self, db):
+        """Cria bolão com um jogo normal e um jogo com time TBD."""
+        ctx = _setup_bolao(db, nome='Bolão TBD')
+        tbd_sel = db.selecao.insert_one(
+            {'sigla': '???', 'nome': 'A Definir', 'escudo': '', 'grupo': ''}
+        ).inserted_id
+        now = datetime.utcnow()
+        db.jogo.insert_one({
+            'nome': 'BRA x ???',
+            'grupo': 'A', 'rodada': 3,
+            'data': now + timedelta(days=10),
+            'local': 'Estádio',
+            'mandante': db.selecao.find_one({'sigla': 'BRA'})['_id'],
+            'visitante': tbd_sel,
+            'gols_mandante': None, 'gols_visitante': None,
+        })
+        return ctx
+
+    def test_nova_aposta_exibe_jogo_tbd(self, logged_in, app):
+        db = app_module.client[os.environ.get('MONGO_DB_NAME', 'dev')]
+        self._setup_tbd_bolao(db)
+        r = logged_in.get('/Bolão TBD/nova_aposta')
+        assert r.status_code == 200, f"nova_aposta retornou {r.status_code}"
+        html = r.data.decode('utf-8', errors='replace')
+        assert 'A Definir' in html or '???' in html, \
+            "Jogo TBD deve aparecer na tela de nova aposta"
+
+    def test_editar_palpites_exibe_jogo_tbd(self, logged_in, app):
+        db = app_module.client[os.environ.get('MONGO_DB_NAME', 'dev')]
+        self._setup_tbd_bolao(db)
+        r = logged_in.get('/Bolão TBD/editar_palpites/Aposta E2E')
+        assert r.status_code == 200, f"editar_palpites retornou {r.status_code}"
+        html = r.data.decode('utf-8', errors='replace')
+        assert 'A Definir' in html or '???' in html, \
+            "Jogo TBD deve aparecer na tela de editar palpites"
+
+    def test_salvar_palpite_jogo_tbd_retorna_bloqueado(self, logged_in, app):
+        """Jogo TBD deve ser recusado como bloqueado no endpoint de salvar."""
+        db = app_module.client[os.environ.get('MONGO_DB_NAME', 'dev')]
+        self._setup_tbd_bolao(db)
+        jogo_tbd = db.jogo.find_one({'nome': 'BRA x ???'})
+        payload = [{'id_jogo': str(jogo_tbd['_id']), 'gols_mandante': 1, 'gols_visitante': 0}]
+        csrf = _get_csrf(logged_in)
+        r = logged_in.post(
+            '/Bolão TBD/salvar_palpites/Aposta E2E',
+            data=json.dumps(payload),
+            content_type='application/json',
+            headers={'X-CSRFToken': csrf},
+        )
+        assert r.status_code == 200
+        body = r.get_json()
+        ids_bloqueados = [b['id_jogo'] for b in body.get('bloqueados', [])]
+        assert str(jogo_tbd['_id']) in ids_bloqueados, \
+            f"Jogo TBD deveria estar bloqueado, resposta: {body}"
+
+
 class TestSeedFromApiStartup:
     """Verifica que _init_dev_db com SEED_FROM_API=true chama o crawler
     e que o app continua funcional após o seed."""

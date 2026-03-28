@@ -111,6 +111,15 @@ def _seed_jogos(db):
     logger.info('Jogos inseridos/atualizados.')
 
 
+def _get_or_create_tbd_selecao(db):
+    """Retorna (criando se necessário) o documento de seleção placeholder para times TBD."""
+    doc = db.selecao.find_one({'sigla': '???'})
+    if doc is None:
+        db.selecao.insert_one({'sigla': '???', 'nome': 'A Definir', 'escudo': '', 'grupo': ''})
+        doc = db.selecao.find_one({'sigla': '???'})
+    return doc
+
+
 def _upsert_jogo(db, match):
     home = match['homeTeam']
     away = match['awayTeam']
@@ -142,13 +151,18 @@ def _upsert_jogo(db, match):
     sel_visitante = db.selecao.find_one({'sigla': sigla_visitante})
 
     if sel_mandante is None or sel_visitante is None:
-        logger.warning('Seleção não encontrada para jogo %s — pulando', nome_jogo)
-        return
+        tbd = _get_or_create_tbd_selecao(db)
+        if sel_mandante is None:
+            logger.info('Time mandante "%s" não encontrado — usando placeholder A Definir', sigla_mandante)
+            sel_mandante = tbd
+        if sel_visitante is None:
+            logger.info('Time visitante "%s" não encontrado — usando placeholder A Definir', sigla_visitante)
+            sel_visitante = tbd
 
-    # Atualiza grupo na seleção se ainda em branco
-    if not sel_mandante.get('grupo'):
+    # Atualiza grupo na seleção se ainda em branco (nunca no placeholder ???)
+    if sel_mandante.get('sigla') != '???' and not sel_mandante.get('grupo'):
         db.selecao.update_one({'_id': sel_mandante['_id']}, {'$set': {'grupo': grupo}})
-    if not sel_visitante.get('grupo'):
+    if sel_visitante.get('sigla') != '???' and not sel_visitante.get('grupo'):
         db.selecao.update_one({'_id': sel_visitante['_id']}, {'$set': {'grupo': grupo}})
 
     venue = match.get('venue') or ''

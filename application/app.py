@@ -333,7 +333,7 @@ def salvar_palpites(bolao, nome_aposta):
             erros.append({'id_jogo': id_jogo_str, 'erro': 'Jogo não encontrado.'})
             continue
 
-        if jogo_ja_iniciou(jogo_doc['data']):
+        if jogo_ja_iniciou(jogo_doc['data']) or jogo_tem_time_tbd(jogo_doc):
             bloqueados.append({'id_jogo': id_jogo_str, 'nome': jogo_doc.get('nome', '')})
             continue
 
@@ -370,7 +370,7 @@ def salvar_palpite(bolao, nome_aposta):
     jogo_doc = tbl_jogo.find_one({'_id': id_jogo})
     if jogo_doc is None:
         return jsonify({'ok': False, 'erro': 'Jogo não encontrado.'}), 404
-    if jogo_ja_iniciou(jogo_doc['data']):
+    if jogo_ja_iniciou(jogo_doc['data']) or jogo_tem_time_tbd(jogo_doc):
         return jsonify({'ok': False, 'erro': 'Este jogo já começou. Palpite bloqueado.'}), 403
     try:
         gm, gv = int(gols_m_str), int(gols_v_str)
@@ -487,6 +487,15 @@ def chart(bolao, id_aposta):
 def jogo_ja_iniciou(jogo_data_utc):
     """Returns True if the match has already started, using server UTC time."""
     return datetime.utcnow() >= jogo_data_utc
+
+
+def jogo_tem_time_tbd(jogo_doc):
+    """Returns True if either team in the match is TBD (sigla '???')."""
+    for field in ('mandante', 'visitante'):
+        sel = tbl_selecao.find_one({'_id': jogo_doc.get(field)})
+        if sel and sel.get('sigla') == '???':
+            return True
+    return False
 
 
 def get_bolao_id(nome_bolao):
@@ -839,20 +848,25 @@ def aposta_ja_existe(nome_aposta, id_bolao):
 def monta_dto_jogo(jogo):
     mandante = tbl_selecao.find_one({'_id': jogo["mandante"]})
     visitante = tbl_selecao.find_one({'_id': jogo["visitante"]})
+    tbd = (
+        (mandante and mandante.get('sigla') == '???') or
+        (visitante and visitante.get('sigla') == '???')
+    )
     return {"_id": jogo["_id"],
             "nome": jogo["nome"],
             "gols_mandante": '-' if jogo["gols_mandante"] is None else jogo["gols_mandante"],
             "gols_visitante": '-' if jogo["gols_visitante"] is None else jogo["gols_visitante"],
-            "escudo_mandante": mandante["escudo"],
-            "escudo_visitante": visitante["escudo"],
-            "nome_mandante": mandante["nome"],
-            "nome_visitante": visitante["nome"],
+            "escudo_mandante": mandante["escudo"] if mandante else '',
+            "escudo_visitante": visitante["escudo"] if visitante else '',
+            "nome_mandante": mandante["nome"] if mandante else 'A Definir',
+            "nome_visitante": visitante["nome"] if visitante else 'A Definir',
             "id_input_mandante": 'm{0}'.format(str(jogo["_id"])),
             "id_input_visitante": 'v{0}'.format(str(jogo["_id"])),
             "data": jogo["data"].strftime('%d/%m %H:%M'),
             "date_time": jogo["data"],
             "local": jogo["local"],
-            "bloqueado": jogo_ja_iniciou(jogo["data"])}
+            "tbd": tbd,
+            "bloqueado": tbd or jogo_ja_iniciou(jogo["data"])}
 
 
 def inclui_jogo_na_lista_rodadas(lista_rodadas, jogo, todos_jogos):
