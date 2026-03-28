@@ -13,7 +13,7 @@
           Preencha ou edite palpites. Jogos já iniciados estão bloqueados.
         </p>
       </div>
-      <button id="btn-salvar" class="btn btn-primary px-4" onclick="salvarTodos()">
+      <button id="btn-salvar" class="btn btn-primary px-4 d-none d-md-inline-flex align-items-center" onclick="salvarTodos()">
         <i class="fa fa-save me-1"></i> Salvar Palpites
       </button>
     </div>
@@ -39,7 +39,11 @@
               <!-- Mandante -->
               <div class="d-flex align-items-center gap-1 flex-grow-1 justify-content-end" style="min-width:80px">
                 <span class="team-name text-end">{{ jogo.nome_mandante }}</span>
+                {% if jogo.escudo_mandante %}
                 <img src="{{ jogo.escudo_mandante }}" class="team-flag" alt="{{ jogo.nome_mandante }}">
+                {% else %}
+                <i class="fa fa-question-circle fa-2x text-secondary"></i>
+                {% endif %}
               </div>
 
               <!-- Placar -->
@@ -72,13 +76,17 @@
 
               <!-- Visitante -->
               <div class="d-flex align-items-center gap-1 flex-grow-1" style="min-width:80px">
+                {% if jogo.escudo_visitante %}
                 <img src="{{ jogo.escudo_visitante }}" class="team-flag" alt="{{ jogo.nome_visitante }}">
+                {% else %}
+                <i class="fa fa-question-circle fa-2x text-secondary"></i>
+                {% endif %}
                 <span class="team-name">{{ jogo.nome_visitante }}</span>
               </div>
 
               <!-- Data -->
               <div class="text-muted small text-nowrap ms-auto">
-                <i class="fa fa-clock-o me-1"></i>{{ jogo.data }}
+                <i class="fa fa-clock-o me-1"></i><span class="data-local" data-utc="{{ jogo.data_utc_iso }}">{{ jogo.data }}</span>
               </div>
 
             </div>
@@ -91,11 +99,19 @@
     {% endfor %}
 
     <div class="d-flex gap-2 flex-wrap mb-4">
-      <button id="btn-salvar-bottom" class="btn btn-primary px-4" onclick="salvarTodos()">
-        <i class="fa fa-save me-1"></i> Salvar Palpites
-      </button>
       <a href="/{{ bolao }}/ranking" class="btn btn-outline-secondary">Ver Ranking</a>
     </div>
+
+    <!-- FAB fixo: salvar palpites -->
+    <button id="btn-salvar-fab" class="btn btn-primary" onclick="salvarTodos()"
+            style="position:fixed;bottom:1.25rem;right:calc(1.25rem + 42px + 0.75rem);z-index:1040;
+                   height:42px;border-radius:21px;
+                   display:flex;align-items:center;justify-content:center;
+                   gap:.4rem;font-size:.95rem;box-shadow:0 3px 10px rgba(0,0,0,.25);
+                   padding:0 1rem;"
+            title="Salvar Palpites">
+      <i id="fabIcon" class="fa fa-save"></i> Salvar
+    </button>
 
   </div>
 </div>
@@ -105,6 +121,13 @@
 <script>
 var BOLAO       = {{ bolao | tojson }};
 var NOME_APOSTA = {{ nome_aposta | tojson }};
+
+document.querySelectorAll('.data-local[data-utc]').forEach(function (el) {
+  var d = new Date(el.dataset.utc);
+  el.textContent = d.toLocaleString(navigator.language, {
+    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+  });
+});
 
 function salvarTodos() {
   var palpites = [];
@@ -158,7 +181,7 @@ function salvarTodos() {
 }
 
 function setBtns(loading) {
-  ['btn-salvar', 'btn-salvar-bottom'].forEach(function (id) {
+  ['btn-salvar'].forEach(function (id) {
     var b = document.getElementById(id);
     if (!b) return;
     b.disabled = loading;
@@ -166,6 +189,13 @@ function setBtns(loading) {
       ? '<i class="fa fa-spinner fa-spin me-1"></i> Salvando…'
       : '<i class="fa fa-save me-1"></i> Salvar Palpites';
   });
+  var fab = document.getElementById('btn-salvar-fab');
+  if (fab) {
+    fab.disabled = loading;
+    document.getElementById('fabIcon').className = loading
+      ? 'fa fa-spinner fa-spin'
+      : 'fa fa-save';
+  }
 }
 
 function bloquearJogoNaTela(jogoId) {

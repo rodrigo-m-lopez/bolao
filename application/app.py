@@ -863,6 +863,7 @@ def monta_dto_jogo(jogo):
             "id_input_mandante": 'm{0}'.format(str(jogo["_id"])),
             "id_input_visitante": 'v{0}'.format(str(jogo["_id"])),
             "data": jogo["data"].strftime('%d/%m %H:%M'),
+            "data_utc_iso": jogo["data"].strftime('%Y-%m-%dT%H:%M:%SZ'),
             "date_time": jogo["data"],
             "local": jogo["local"],
             "tbd": tbd,
