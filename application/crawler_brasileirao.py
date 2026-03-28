@@ -150,6 +150,7 @@ def _upsert_jogo(db, match):
             'gols_visitante': gols_v,
             'grupo': grupo,
             'rodada': rodada,
+            'status_api': match.get('status', ''),
             'competicao': _COMPETICAO,
         }},
         upsert=True,

@@ -884,8 +884,13 @@ def monta_dto_jogo(jogo):
     )
     iniciou = jogo_ja_iniciou(jogo["data"])
     tem_resultado = jogo["gols_mandante"] is not None and jogo["gols_visitante"] is not None
+    status_api = jogo.get('status_api', '')
+    adiado = status_api in ('POSTPONED', 'SUSPENDED', 'CANCELLED')
+
     if tbd:
         status = 'tbd'
+    elif adiado:
+        status = 'adiado'
     elif not iniciou:
         status = 'aberto'
     elif tem_resultado:
@@ -909,7 +914,7 @@ def monta_dto_jogo(jogo):
             "local": jogo["local"],
             "tbd": tbd,
             "status": status,
-            "bloqueado": tbd or iniciou}
+            "bloqueado": tbd or adiado or iniciou}
 
 
 def inclui_jogo_na_lista_rodadas(lista_rodadas, jogo, todos_jogos):

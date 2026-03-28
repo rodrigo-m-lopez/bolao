@@ -74,6 +74,17 @@
               palpite: {{ palp }}
             </div>
             {% endif %}
+          {% elif jogo.status == 'adiado' %}
+            <div class="d-flex align-items-center gap-1">
+              <span class="text-secondary">—</span>
+              <span class="vs-sep">x</span>
+              <span class="text-secondary">—</span>
+            </div>
+            {% if palp %}
+            <div class="text-muted" style="font-size:.7rem;line-height:1.2">
+              palpite: {{ palp }}
+            </div>
+            {% endif %}
           {% else %}
             <div class="d-flex align-items-center gap-1">
               <span class="text-muted">—</span>
@@ -102,6 +113,8 @@
             <span class="badge-bloqueado ms-1" style="background:#198754">Encerrado</span>
           {% elif jogo.status == 'em_andamento' %}
             <span class="badge-bloqueado ms-1" style="background:#fd7e14">Em Andamento</span>
+          {% elif jogo.status == 'adiado' %}
+            <span class="badge-bloqueado ms-1" style="background:#6c757d">Adiado</span>
           {% endif %}
         </div>
 

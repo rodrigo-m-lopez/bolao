@@ -87,6 +87,8 @@
                 <span class="badge-bloqueado ms-1" style="background:#198754">Encerrado</span>
               {% elif jogo.status == 'em_andamento' %}
                 <span class="badge-bloqueado ms-1" style="background:#fd7e14">Em Andamento</span>
+              {% elif jogo.status == 'adiado' %}
+                <span class="badge-bloqueado ms-1" style="background:#6c757d">Adiado</span>
               {% endif %}
             </div>
 

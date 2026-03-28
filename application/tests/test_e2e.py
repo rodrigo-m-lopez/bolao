@@ -836,6 +836,55 @@ class TestStatusPartidas:
         html = r.data.decode('utf-8', errors='replace')
         assert 'Em Andamento' in html, "Deve exibir badge 'Em Andamento' para jogo em progresso"
 
+    def test_dto_jogo_status_adiado_com_status_api_postponed(self, app):
+        """Jogo com status_api=POSTPONED deve ter status='adiado' e bloqueado=True."""
+        db = app_module.client[os.environ.get('MONGO_DB_NAME', 'dev')]
+        now = datetime.utcnow()
+        sel_a = db.selecao.insert_one(
+            {'sigla': 'XX1', 'nome': 'Time X', 'escudo': '', 'grupo': ''}
+        ).inserted_id
+        sel_b = db.selecao.insert_one(
+            {'sigla': 'XX2', 'nome': 'Time Y', 'escudo': '', 'grupo': ''}
+        ).inserted_id
+        jogo = db.jogo.insert_one({
+            'nome': 'XX1 x XX2',
+            'grupo': 'Rodada 4', 'rodada': 4,
+            'data': now - timedelta(days=3),  # data original já passou
+            'local': 'Estádio',
+            'mandante': sel_a, 'visitante': sel_b,
+            'gols_mandante': None, 'gols_visitante': None,
+            'status_api': 'POSTPONED',
+            'competicao': 'Campeonato Brasileiro Série A 2026',
+        })
+        from application.app import monta_dto_jogo
+        doc = db.jogo.find_one({'_id': jogo.inserted_id})
+        dto = monta_dto_jogo(doc)
+        assert dto['status'] == 'adiado', \
+            f"Jogo POSTPONED deve ter status='adiado', got '{dto['status']}'"
+        assert dto['bloqueado'], "Jogo adiado deve estar bloqueado"
+
+    def test_editar_palpites_exibe_badge_adiado(self, logged_in, app):
+        """Template editar_palpites deve exibir badge 'Adiado' para jogos adiados."""
+        db = app_module.client[os.environ.get('MONGO_DB_NAME', 'dev')]
+        ctx = self._setup_status_bolao(db)
+        now = datetime.utcnow()
+        sel_a = db.selecao.find_one({'sigla': 'BRA'})['_id']
+        sel_b = db.selecao.find_one({'sigla': 'ARG'})['_id']
+        db.jogo.insert_one({
+            'nome': 'BRA x ARG adiado',
+            'grupo': 'A', 'rodada': 5,
+            'data': now - timedelta(days=2),
+            'local': 'Estádio',
+            'mandante': sel_a, 'visitante': sel_b,
+            'gols_mandante': None, 'gols_visitante': None,
+            'status_api': 'POSTPONED',
+            'competicao': 'Copa do Mundo 2026',
+        })
+        r = logged_in.get(f'/{ctx["bolao"]}/editar_palpites/Aposta E2E')
+        assert r.status_code == 200
+        assert 'Adiado' in r.data.decode('utf-8', errors='replace'), \
+            "Deve exibir badge 'Adiado' para jogo com status_api=POSTPONED"
+
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 

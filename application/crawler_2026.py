@@ -189,6 +189,7 @@ def _upsert_jogo(db, match):
             'grupo': grupo,
             'rodada': rodada,
             'url_rodada': f'/rodada/{rodada}',
+            'status_api': match.get('status', ''),
             'competicao': 'Copa do Mundo 2026',
         }},
         upsert=True,
