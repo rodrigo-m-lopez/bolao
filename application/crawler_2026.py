@@ -3,7 +3,7 @@
 Crawler / seeder para a Copa do Mundo 2026.
 
 Usa a API gratuita football-data.org (v4) para:
-  1. seed_database(db)     — popula seleções e jogos da fase de grupos
+  1. seed_database(db)     — popula seleções e jogos (grupos + mata-mata)
   2. atualiza_resultados(db) — atualiza placares dos jogos já encerrados
 
 Variável de ambiente necessária:
@@ -36,6 +36,17 @@ _GRUPOS = {
     'GROUP_D': 'Grupo D', 'GROUP_E': 'Grupo E', 'GROUP_F': 'Grupo F',
     'GROUP_G': 'Grupo G', 'GROUP_H': 'Grupo H', 'GROUP_I': 'Grupo I',
     'GROUP_J': 'Grupo J', 'GROUP_K': 'Grupo K', 'GROUP_L': 'Grupo L',
+}
+
+# Mapeamento fase eliminatória API → nome exibido na tela
+_FASES = {
+    'LAST_64': '64 Avos de Final',
+    'LAST_32': '32 Avos de Final',
+    'LAST_16': 'Oitavas de Final',
+    'QUARTER_FINALS': 'Quartas de Final',
+    'SEMI_FINALS': 'Semifinal',
+    'THIRD_PLACE': 'Disputa de 3º Lugar',
+    'FINAL': 'Final',
 }
 
 
@@ -106,10 +117,10 @@ def _seed_selecoes(db):
 
 
 def _seed_jogos(db):
-    logger.info('Buscando jogos da fase de grupos na API...')
+    logger.info('Buscando jogos na API...')
     data = _get(
         f'/competitions/{_COMPETITION}/matches',
-        params={'season': _SEASON, 'stage': 'GROUP_STAGE'},
+        params={'season': _SEASON},
     )
     matches = data.get('matches', [])
     logger.info('%d jogos recebidos', len(matches))
@@ -137,8 +148,15 @@ def _upsert_jogo(db, match):
     sigla_visitante = (away.get('tla') or away.get('shortName') or away.get('name') or '???')[:3].upper()
     nome_jogo = f'{sigla_mandante} x {sigla_visitante}'
 
-    grupo_api = match.get('group') or ''
-    grupo = _GRUPOS.get(grupo_api, grupo_api)
+    stage = match.get('stage', '')
+    if stage == 'GROUP_STAGE':
+        grupo_api = match.get('group') or ''
+        grupo = _GRUPOS.get(grupo_api, grupo_api)
+    elif stage in _FASES:
+        grupo = _FASES[stage]
+    else:
+        logger.debug('Stage %s ignorado para jogo %s', stage, nome_jogo)
+        return
 
     # Rodada dentro do grupo (matchday 1-3)
     rodada = match.get('matchday', 1)
@@ -250,7 +268,7 @@ def atualiza_resultados(db):
     logger.info('Atualizando resultados...')
     data = _get(
         f'/competitions/{_COMPETITION}/matches',
-        params={'season': _SEASON, 'stage': 'GROUP_STAGE', 'status': 'FINISHED'},
+        params={'season': _SEASON, 'status': 'FINISHED'},
     )
     matches = data.get('matches', [])
     logger.info('%d jogos encerrados recebidos', len(matches))

@@ -929,8 +929,13 @@ def inclui_jogo_na_lista_rodadas(lista_rodadas, jogo, todos_jogos):
 
     if not existe_rodada_na_lista:
         jogos = []
+        grupo = jogo.get("grupo", "")
+        if grupo.startswith("Grupo"):
+            nome_rodada = '{}ª Rodada'.format(rodada_do_jogo)
+        else:
+            nome_rodada = 'Jogo {}'.format(rodada_do_jogo)
         lista_rodadas.append({"numero": rodada_do_jogo,
-                              "nome": '{}ª Rodada'.format(rodada_do_jogo),
+                              "nome": nome_rodada,
                               "jogos": jogos})
     dto_jogo = monta_dto_jogo(jogo)
     jogos.append(dto_jogo)

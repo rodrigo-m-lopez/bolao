@@ -16,7 +16,8 @@ _UNSET = object()  # sentinel to distinguish "omitted" from explicit None
 
 
 def _make_match(home_tla, home_short, away_tla, away_short, gols_m=None, gols_v=None,
-                home_name=_UNSET, away_name=_UNSET):
+                home_name=_UNSET, away_name=_UNSET,
+                stage='GROUP_STAGE', group='GROUP_A', matchday=1, status='SCHEDULED'):
     """Build a minimal match dict as returned by football-data.org API.
 
     home_name/away_name default to home_short/away_short when omitted.
@@ -28,9 +29,11 @@ def _make_match(home_tla, home_short, away_tla, away_short, gols_m=None, gols_v=
         'awayTeam': {'tla': away_tla, 'shortName': away_short,
                      'name': away_name if away_name is not _UNSET else (away_short or 'Team B')},
         'utcDate': '2026-06-11T18:00:00Z',
-        'group': 'GROUP_A',
-        'matchday': 1,
+        'stage': stage,
+        'group': group,
+        'matchday': matchday,
         'venue': 'Stadium',
+        'status': status,
         'score': {
             'fullTime': {'home': gols_m, 'away': gols_v},
         },
@@ -180,3 +183,155 @@ class TestSeedSelecoes:
                 crawler._seed_selecoes(db)
             except TypeError as exc:
                 pytest.fail(f"_seed_selecoes crashed when all name fields are null: {exc}")
+
+
+class TestUpsertJogoKnockout:
+    """_upsert_jogo deve tratar corretamente jogos de fases eliminatórias."""
+
+    def test_last_16_match_uses_fase_as_grupo(self):
+        """Jogo de LAST_16 (group=None) deve ter grupo='Oitavas de Final'."""
+        db = _make_db()
+        _insert_selecoes(db, 'BRA', 'ARG')
+        match = _make_match('BRA', 'Brazil', 'ARG', 'Argentina',
+                            stage='LAST_16', group=None, matchday=1)
+        crawler._upsert_jogo(db, match)
+        jogo = db.jogo.find_one({'nome': 'BRA x ARG'})
+        assert jogo is not None
+        assert jogo['grupo'] == 'Oitavas de Final'
+
+    def test_quarter_finals_match(self):
+        """Jogo de QUARTER_FINALS deve ter grupo='Quartas de Final'."""
+        db = _make_db()
+        _insert_selecoes(db, 'FRA', 'GER')
+        match = _make_match('FRA', 'France', 'GER', 'Germany',
+                            stage='QUARTER_FINALS', group=None, matchday=1)
+        crawler._upsert_jogo(db, match)
+        jogo = db.jogo.find_one({'nome': 'FRA x GER'})
+        assert jogo is not None
+        assert jogo['grupo'] == 'Quartas de Final'
+
+    def test_semi_finals_match(self):
+        """Jogo de SEMI_FINALS deve ter grupo='Semifinal'."""
+        db = _make_db()
+        _insert_selecoes(db, 'BRA', 'FRA')
+        match = _make_match('BRA', 'Brazil', 'FRA', 'France',
+                            stage='SEMI_FINALS', group=None, matchday=1)
+        crawler._upsert_jogo(db, match)
+        jogo = db.jogo.find_one({'nome': 'BRA x FRA'})
+        assert jogo is not None
+        assert jogo['grupo'] == 'Semifinal'
+
+    def test_third_place_match(self):
+        """Jogo de THIRD_PLACE deve ter grupo='Disputa de 3º Lugar'."""
+        db = _make_db()
+        _insert_selecoes(db, 'GER', 'ARG')
+        match = _make_match('GER', 'Germany', 'ARG', 'Argentina',
+                            stage='THIRD_PLACE', group=None, matchday=1)
+        crawler._upsert_jogo(db, match)
+        jogo = db.jogo.find_one({'nome': 'GER x ARG'})
+        assert jogo is not None
+        assert jogo['grupo'] == 'Disputa de 3º Lugar'
+
+    def test_final_match(self):
+        """Jogo de FINAL deve ter grupo='Final'."""
+        db = _make_db()
+        _insert_selecoes(db, 'BRA', 'FRA')
+        match = _make_match('BRA', 'Brazil', 'FRA', 'France',
+                            stage='FINAL', group=None, matchday=1)
+        crawler._upsert_jogo(db, match)
+        jogo = db.jogo.find_one({'nome': 'BRA x FRA'})
+        assert jogo is not None
+        assert jogo['grupo'] == 'Final'
+
+    def test_group_stage_still_uses_grupo(self):
+        """Jogo de GROUP_STAGE continua usando _GRUPOS normalmente."""
+        db = _make_db()
+        _insert_selecoes(db, 'BRA', 'ARG')
+        match = _make_match('BRA', 'Brazil', 'ARG', 'Argentina',
+                            stage='GROUP_STAGE', group='GROUP_A', matchday=1)
+        crawler._upsert_jogo(db, match)
+        jogo = db.jogo.find_one({'nome': 'BRA x ARG'})
+        assert jogo is not None
+        assert jogo['grupo'] == 'Grupo A'
+
+    def test_unknown_stage_is_ignored(self):
+        """Stage desconhecido (ex: QUALIFICATION) não insere jogo."""
+        db = _make_db()
+        _insert_selecoes(db, 'BRA', 'ARG')
+        match = _make_match('BRA', 'Brazil', 'ARG', 'Argentina',
+                            stage='QUALIFICATION', group=None, matchday=1)
+        crawler._upsert_jogo(db, match)
+        assert db.jogo.count_documents({}) == 0
+
+    def test_last_32_match(self):
+        """Jogo de LAST_32 deve ter grupo='32 Avos de Final'."""
+        db = _make_db()
+        _insert_selecoes(db, 'BRA', 'ARG')
+        match = _make_match('BRA', 'Brazil', 'ARG', 'Argentina',
+                            stage='LAST_32', group=None, matchday=1)
+        crawler._upsert_jogo(db, match)
+        jogo = db.jogo.find_one({'nome': 'BRA x ARG'})
+        assert jogo is not None
+        assert jogo['grupo'] == '32 Avos de Final'
+
+
+class TestSeedJogosSemFiltroStage:
+    """_seed_jogos deve buscar jogos de todas as fases, não só GROUP_STAGE."""
+
+    def test_seed_jogos_nao_filtra_por_stage(self):
+        """Verifica que _seed_jogos não passa stage como parâmetro da API."""
+        db = _make_db()
+        _insert_selecoes(db, 'BRA', 'ARG')
+        chamadas = []
+
+        def fake_get(endpoint, params=None):
+            chamadas.append(params or {})
+            return {'matches': [
+                _make_match('BRA', 'Brazil', 'ARG', 'Argentina',
+                            stage='LAST_16', group=None),
+            ]}
+
+        with pytest.MonkeyPatch().context() as mp:
+            mp.setattr(crawler, '_get', fake_get)
+            crawler._seed_jogos(db)
+
+        assert 'stage' not in chamadas[0], \
+            "_seed_jogos não deve filtrar por stage — deve buscar todos os jogos"
+        assert db.jogo.count_documents({}) == 1
+
+
+class TestAtualizaResultadosSemFiltroStage:
+    """atualiza_resultados deve buscar jogos encerrados de todas as fases."""
+
+    def test_atualiza_resultados_nao_filtra_por_stage(self):
+        """Verifica que atualiza_resultados não passa stage como parâmetro."""
+        db = _make_db()
+        # Pré-inserir jogo de oitavas no banco
+        sel_bra = db.selecao.insert_one({'sigla': 'BRA', 'nome': 'Brasil', 'grupo': ''}).inserted_id
+        sel_arg = db.selecao.insert_one({'sigla': 'ARG', 'nome': 'Argentina', 'grupo': ''}).inserted_id
+        db.jogo.insert_one({
+            'nome': 'BRA x ARG', 'competicao': 'Copa do Mundo 2026',
+            'grupo': 'Oitavas de Final', 'rodada': 1,
+            'mandante': sel_bra, 'visitante': sel_arg,
+            'gols_mandante': None, 'gols_visitante': None,
+        })
+
+        chamadas = []
+
+        def fake_get(endpoint, params=None):
+            chamadas.append(params or {})
+            return {'matches': [
+                _make_match('BRA', 'Brazil', 'ARG', 'Argentina',
+                            gols_m=2, gols_v=1, stage='LAST_16', group=None,
+                            status='FINISHED'),
+            ]}
+
+        with pytest.MonkeyPatch().context() as mp:
+            mp.setattr(crawler, '_get', fake_get)
+            crawler.atualiza_resultados(db)
+
+        assert 'stage' not in chamadas[0], \
+            "atualiza_resultados não deve filtrar por stage"
+        jogo = db.jogo.find_one({'nome': 'BRA x ARG'})
+        assert jogo['gols_mandante'] == 2
+        assert jogo['gols_visitante'] == 1

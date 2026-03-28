@@ -886,6 +886,56 @@ class TestStatusPartidas:
             "Deve exibir badge 'Adiado' para jogo com status_api=POSTPONED"
 
 
+# ── Testes: Nome de rodada dinâmico (grupos vs. mata-mata) ───────────────────
+
+class TestNomeRodadaDinamico:
+    """inclui_jogo_na_lista_rodadas deve nomear rodadas de forma diferente
+    para fase de grupos (Nª Rodada) e mata-mata (Jogo N)."""
+
+    def _make_jogo_doc(self, db, grupo, rodada):
+        """Cria documento de jogo mínimo no banco e retorna o doc."""
+        sel = db.selecao.find_one() or db.selecao.insert_one(
+            {'sigla': 'TST', 'nome': 'Teste', 'escudo': '', 'grupo': ''}
+        )
+        sel_id = sel['_id'] if isinstance(sel, dict) else sel.inserted_id
+        jid = db.jogo.insert_one({
+            'nome': 'TST x TST', 'grupo': grupo, 'rodada': rodada,
+            'data': datetime.utcnow() + timedelta(days=1),
+            'local': 'Estádio', 'mandante': sel_id, 'visitante': sel_id,
+            'gols_mandante': None, 'gols_visitante': None,
+            'competicao': 'Copa do Mundo 2026',
+        }).inserted_id
+        return db.jogo.find_one({'_id': jid})
+
+    def test_grupo_stage_usa_rodada_formatada(self, app):
+        db = app_module.client[os.environ.get('MONGO_DB_NAME', 'dev')]
+        jogo = self._make_jogo_doc(db, 'Grupo A', 2)
+        lista_rodadas = []
+        app_module.inclui_jogo_na_lista_rodadas(lista_rodadas, jogo, [])
+        assert lista_rodadas[0]['nome'] == '2ª Rodada'
+
+    def test_oitavas_usa_jogo_n(self, app):
+        db = app_module.client[os.environ.get('MONGO_DB_NAME', 'dev')]
+        jogo = self._make_jogo_doc(db, 'Oitavas de Final', 1)
+        lista_rodadas = []
+        app_module.inclui_jogo_na_lista_rodadas(lista_rodadas, jogo, [])
+        assert lista_rodadas[0]['nome'] == 'Jogo 1'
+
+    def test_final_usa_jogo_n(self, app):
+        db = app_module.client[os.environ.get('MONGO_DB_NAME', 'dev')]
+        jogo = self._make_jogo_doc(db, 'Final', 1)
+        lista_rodadas = []
+        app_module.inclui_jogo_na_lista_rodadas(lista_rodadas, jogo, [])
+        assert lista_rodadas[0]['nome'] == 'Jogo 1'
+
+    def test_quartas_usa_jogo_n(self, app):
+        db = app_module.client[os.environ.get('MONGO_DB_NAME', 'dev')]
+        jogo = self._make_jogo_doc(db, 'Quartas de Final', 2)
+        lista_rodadas = []
+        app_module.inclui_jogo_na_lista_rodadas(lista_rodadas, jogo, [])
+        assert lista_rodadas[0]['nome'] == 'Jogo 2'
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _get_csrf(client):

@@ -42,11 +42,24 @@ _JOGOS = [
     ('ARG x FRA',   'C',   1,   timedelta(days=6),       None, None, 'ARG', 'FRA'),  # semana que vem
 ]
 
+# Jogos de fases eliminatórias (mata-mata) — nomes distintos dos de grupo
+# (nome, grupo, rodada, delta_tempo, gm, gv, mandante, visitante)
+_JOGOS_MATA_MATA = [
+    # Nomes devem ser únicos (não repetir nomes da _JOGOS de fase de grupos)
+    ('BRA x ESP',   'Oitavas de Final',  1, timedelta(days=10),  None, None, 'BRA', 'ESP'),
+    ('ARG x ENG',   'Oitavas de Final',  2, timedelta(days=10, hours=3), None, None, 'ARG', 'ENG'),
+    ('ESP x ENG',   'Quartas de Final',  1, timedelta(days=14),  None, None, 'ESP', 'ENG'),
+    ('BRA x ENG',   'Semifinal',         1, timedelta(days=18),  None, None, 'BRA', 'ENG'),
+    ('ESP x ARG',   'Final',             1, timedelta(days=22),  None, None, 'ESP', 'ARG'),
+]
+
 _SELECOES = [
     {'nome': 'Brasil',    'sigla': 'BRA', 'escudo': '', 'grupo': 'A'},
     {'nome': 'Argentina', 'sigla': 'ARG', 'escudo': '', 'grupo': 'A'},
     {'nome': 'França',    'sigla': 'FRA', 'escudo': '', 'grupo': 'B'},
     {'nome': 'Alemanha',  'sigla': 'GER', 'escudo': '', 'grupo': 'B'},
+    {'nome': 'Espanha',   'sigla': 'ESP', 'escudo': '', 'grupo': 'C'},
+    {'nome': 'Inglaterra','sigla': 'ENG', 'escudo': '', 'grupo': 'C'},
 ]
 
 # Clubes mock da Libertadores (siglas únicas)
@@ -158,6 +171,22 @@ def populate_dev_db(db):
     # ── Jogos ──────────────────────────────────────────────────────────────────
     jogo_ids = {}
     for nome, grupo, rodada, delta, gm, gv, m_sigla, v_sigla in _JOGOS:
+        jid = db.jogo.insert_one({
+            'nome': nome,
+            'grupo': grupo,
+            'rodada': rodada,
+            'data': now + delta,
+            'local': 'Estádio Dev',
+            'mandante': sel[m_sigla],
+            'visitante': sel[v_sigla],
+            'gols_mandante': gm,
+            'gols_visitante': gv,
+            'competicao': 'Copa do Mundo 2026',
+        }).inserted_id
+        jogo_ids[nome] = jid
+
+    # ── Jogos de mata-mata (Copa do Mundo) ─────────────────────────────────────
+    for nome, grupo, rodada, delta, gm, gv, m_sigla, v_sigla in _JOGOS_MATA_MATA:
         jid = db.jogo.insert_one({
             'nome': nome,
             'grupo': grupo,
