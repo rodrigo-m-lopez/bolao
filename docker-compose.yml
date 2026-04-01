@@ -25,6 +25,8 @@ services:
     image: app
     build: application/.
     env_file: application/bolao.secrets.env
+    environment:
+    - MONGO_DB_NAME=bolao_prod
     restart: always
     expose:
     - "8000"
