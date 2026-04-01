@@ -121,6 +121,17 @@ login_manager.login_message = 'Você precisa estar logado para acessar esta pág
 login_manager.init_app(app)
 
 
+@app.after_request
+def set_security_headers(response):
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    if not DEV_MOCK_AUTH:
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    return response
+
+
 @login_manager.user_loader
 def load_user(user_id):
     return Usuario(user_id)
