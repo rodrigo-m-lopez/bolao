@@ -1,5 +1,6 @@
 import os
 import logging
+from urllib.parse import quote_plus
 from pymongo import MongoClient
 
 logger = logging.getLogger(__name__)
@@ -13,8 +14,8 @@ def get_db_client():
     DEV_MOCK_AUTH controla apenas a autenticação OAuth, não o banco de dados.
     """
     if __is_hostname_reachable('db'):
-        user = os.environ.get('MONGO_USER', 'bolao_user')
-        password = os.environ.get('MONGO_PASS', 'bolao_pass')
+        user = quote_plus(os.environ.get('MONGO_USER', 'bolao_user'))
+        password = quote_plus(os.environ.get('MONGO_PASS', 'bolao_pass'))
         auth_db = os.environ.get('MONGO_AUTH_DB', 'admin')
         uri = 'mongodb://{}:{}@db:27017/{}'.format(user, password, auth_db)
         logger.info('Conectando ao MongoDB em db:27017')
