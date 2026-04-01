@@ -279,22 +279,22 @@ class TestApostasEPalpites:
 # ── 5. Ranking e jogo ─────────────────────────────────────────────────────────
 
 class TestRankingEJogo:
-    def test_ranking_retorna_200(self, c, app):
+    def test_ranking_retorna_200(self, logged_in, app):
         db = app_module.client[os.environ.get('MONGO_DB_NAME', 'dev')]
         ctx = _setup_bolao(db)
-        r = c.get(f'/{ctx["bolao"]}/ranking')
+        r = logged_in.get(f'/{ctx["bolao"]}/ranking')
         assert r.status_code == 200, f"ranking retornou {r.status_code}"
 
-    def test_jogo_retorna_200(self, c, app):
+    def test_jogo_retorna_200(self, logged_in, app):
         db = app_module.client[os.environ.get('MONGO_DB_NAME', 'dev')]
         ctx = _setup_bolao(db)
-        r = c.get(f'/{ctx["bolao"]}/jogo/BRA x ARG')
+        r = logged_in.get(f'/{ctx["bolao"]}/jogo/BRA x ARG')
         assert r.status_code == 200, f"jogo retornou {r.status_code}"
 
-    def test_jogo_inexistente_redireciona(self, c, app):
+    def test_jogo_inexistente_redireciona(self, logged_in, app):
         db = app_module.client[os.environ.get('MONGO_DB_NAME', 'dev')]
         ctx = _setup_bolao(db)
-        r = c.get(f'/{ctx["bolao"]}/jogo/NAO x EXISTE', follow_redirects=False)
+        r = logged_in.get(f'/{ctx["bolao"]}/jogo/NAO x EXISTE', follow_redirects=False)
         assert r.status_code == 302, f"jogo inexistente deveria redirecionar, retornou {r.status_code}"
 
 

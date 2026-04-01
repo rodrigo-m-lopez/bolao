@@ -176,6 +176,7 @@ def nova_aposta(bolao):
 
 
 @app.route('/<bolao>/descricao_bolao')
+@login_required
 def descricao(bolao):
     bolao_selecionado = tbl_bolao.find_one({'nome': bolao})
     responsavel = tbl_usuario.find_one({'_id': bolao_selecionado['usuario']})
@@ -184,6 +185,7 @@ def descricao(bolao):
 
 
 @app.route('/<bolao>/ranking')
+@login_required
 def ranking(bolao):
     lista_apostas = monta_dto_apostas(bolao)
     bolao_doc = tbl_bolao.find_one({'nome': bolao}) or {}
@@ -273,6 +275,7 @@ def remover_bolao(bolao):
 
 
 @app.route('/<bolao>/palpite/<nome_aposta>')
+@login_required
 def palpite(bolao, nome_aposta):
     id_bolao = get_bolao_id(bolao)
     aposta = tbl_aposta.find_one({'nome': nome_aposta, 'bolao': id_bolao})
@@ -288,6 +291,7 @@ def palpite(bolao, nome_aposta):
 
 
 @app.route('/<bolao>/jogo/<nome_jogo>')
+@login_required
 def jogo(bolao, nome_jogo):
     bolao_doc = tbl_bolao.find_one({'nome': bolao}) or {}
     _, todos_jogos = monta_dto_grupos(bolao_doc.get('competicao', ''))
@@ -490,6 +494,7 @@ def oauth_authorize(provider):
 
 
 @app.route('/<bolao>/chart/<id_aposta>')
+@login_required
 def chart(bolao, id_aposta):
     id_bolao = get_bolao_id(bolao)
     aposta = tbl_aposta.find_one({'_id': ObjectId(id_aposta)})

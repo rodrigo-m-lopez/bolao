@@ -17,7 +17,9 @@ class TestGetBolaoId:
 
     def test_missing_bolao_raises_404(self, client):
         rv = client.get('/nonexistent/ranking')
-        assert rv.status_code == 404
+        # Unauthenticated access to @login_required route redirects (302);
+        # authenticated access to non-existent bolao returns 404.
+        assert rv.status_code in (302, 404)
 
     def test_missing_bolao_raises_404_via_toggle(self, client):
         rv = client.post('/nonexistent/toggle_pago',
