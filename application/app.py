@@ -171,7 +171,7 @@ def nova_aposta(bolao):
             insere_pontuacoes(id_aposta, todos_jogos)
             return redirect(url_for('editar_palpites', bolao=bolao, nome_aposta=nome_aposta))
         else:
-            flash('Já existe uma aposta para este bolão com o nome [{}]. Escolha outro.'.format(nome_aposta))
+            flash('Já existe uma aposta para este bolão com o nome [{}]. Escolha outro.'.format(escape(nome_aposta)))
             return render_template('aposta.html', bolao=bolao, grupos=grupos)
 
 
