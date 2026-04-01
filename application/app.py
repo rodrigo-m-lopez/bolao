@@ -111,6 +111,9 @@ app.config['OAUTH_CREDENTIALS'] = {
     }
 }
 app.config['DEV_MOCK_AUTH'] = DEV_MOCK_AUTH
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = not DEV_MOCK_AUTH
 
 login_manager = LoginManager()
 login_manager.login_view = 'login'
@@ -1019,4 +1022,4 @@ class Usuario:
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0')
+    app.run(debug=False, host='127.0.0.1')
